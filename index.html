@@ -307,19 +307,7 @@
             transition: width 0.3s;
         }
 
-        .controls {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(0,0,0,0.8);
-            padding: 15px;
-            border-radius: 10px;
-            color: white;
-            z-index: 10;
-            backdrop-filter: blur(10px);
-            border: 2px solid rgba(255,255,255,0.2);
-            font-size: 14px;
-        }
+
 
         .notification {
             position: fixed;
@@ -1117,8 +1105,170 @@
                     <p>Items drop every 15 seconds</p>
                     <small>Swords, shields, nukes, and more!</small>
                 </div>
+                <div class="map-card" onclick="selectBattleMode('flag_capture')">
+                    <h3><span class="emoji">🏁</span> Tis' my FLAG BOI</h3>
+                    <p>Capture and hold the flag!</p>
+                    <small>Hold for 15 seconds to win!</small>
+                </div>
+                <div id="bossBattleCard" class="map-card" onclick="selectBattleMode('boss_battle')" style="background: linear-gradient(45deg, #8B0000, #DC143C); border-color: #DC143C; display: none;">
+                    <h3><span class="emoji">🐉</span> Boss Battle</h3>
+                    <p>Team up vs Giant Boss!</p>
+                    <small>2-Player Cooperative mode only!</small>
+                </div>
+                <!-- Single Player Tournament - Only show in single player mode -->
+                <div id="singlePlayerTournamentCard" class="map-card" onclick="showTournamentSelect()" style="background: linear-gradient(45deg, #FFD700, #FFA500); border-color: #FFD700; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(45deg, #FFD700, #FF6B35, #FFD700); animation: megaGlow 2s ease-in-out infinite; z-index: 0;"></div>
+                    <div style="position: relative; z-index: 10; color: #000000; text-shadow: 2px 2px 4px rgba(255,255,255,0.8); font-weight: bold;">
+                        <h3><span class="emoji">🏆</span> Tournament Mode</h3>
+                        <p>Win series for big rewards!</p>
+                        <small>Entry fee required - Winner takes all!</small>
+                    </div>
+                </div>
+                <!-- 2-Player Tournament - Only show in multiplayer mode -->
+                <div id="multiPlayerTournamentCard" class="map-card" onclick="showTournamentSelect2Player()" style="background: linear-gradient(45deg, #9C27B0, #E91E63); border-color: #9C27B0; position: relative; overflow: hidden; display: none;">
+                    <div style="position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(45deg, #9C27B0, #E91E63, #FF6B35, #E91E63, #9C27B0); animation: choosePulse 1.2s ease-in-out infinite; z-index: 0;"></div>
+                    <div style="position: relative; z-index: 10; color: #FFFFFF; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); font-weight: bold;">
+                        <h3><span class="emoji">👥</span> 2-Player Tournament</h3>
+                        <p>Compete head-to-head!</p>
+                        <small>Both players on opposite bracket sides!</small>
+                    </div>
+                </div>
             </div>
             <button class="button" onclick="showMainMenu()">← Back</button>
+        </div>
+
+        <!-- Tournament Selection Screen -->
+        <div id="tournamentSelectScreen" class="screen" style="background: linear-gradient(45deg, #FFD700, #FFA500, #FFD700); overflow-y: auto; padding: 20px;">
+            <h2 class="title" style="color: #000; text-shadow: 2px 2px 4px rgba(255,255,255,0.5);">🏆 TOURNAMENT MODE 🏆</h2>
+            <div class="player-selection-info" style="background: linear-gradient(45deg, #FF6B35, #F7931E); color: #FFD700; border: 2px solid #FFD700; font-size: 18px; margin-bottom: 30px;">
+                💰 Pay entry fee • Win all rounds • Take the prize pool! 💰
+            </div>
+
+            <div class="map-selection" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto;">
+                <!-- Rookie Tournament -->
+                <div class="map-card tournament-card" onclick="startTournament('rookie')" style="background: linear-gradient(45deg, #4CAF50, #8BC34A); border-color: #4CAF50; position: relative; overflow: hidden; height: 200px;">
+                    <div style="position: relative; z-index: 10; color: #000000; text-shadow: 2px 2px 4px rgba(255,255,255,0.8); font-weight: bold; text-align: center; padding: 10px;">
+                        <h3><span class="emoji" style="font-size: 28px;">🥉</span><br>ROOKIE TOURNAMENT</h3>
+                        <p style="margin: 8px 0; font-size: 15px;">Entry Fee: <strong>25 coins</strong></p>
+                        <p style="margin: 5px 0; font-size: 13px;">3 Rounds • Prize: <strong>75 coins</strong></p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #2E7D32;">vs Common Characters</p>
+                        <small style="color: #000; font-weight: bold;">Best of 3 series each round</small>
+                    </div>
+                </div>
+
+                <!-- Pro Tournament -->
+                <div class="map-card tournament-card" onclick="startTournament('pro')" style="background: linear-gradient(45deg, #2196F3, #03A9F4); border-color: #2196F3; position: relative; overflow: hidden; height: 200px;">
+                    <div style="position: relative; z-index: 10; color: #000000; text-shadow: 2px 2px 4px rgba(255,255,255,0.8); font-weight: bold; text-align: center; padding: 10px;">
+                        <h3><span class="emoji" style="font-size: 28px;">🥈</span><br>PRO TOURNAMENT</h3>
+                        <p style="margin: 8px 0; font-size: 15px;">Entry Fee: <strong>50 coins</strong></p>
+                        <p style="margin: 5px 0; font-size: 13px;">4 Rounds • Prize: <strong>200 coins</strong></p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #1565C0;">vs Rare Characters</p>
+                        <small style="color: #000; font-weight: bold;">Best of 3 series each round</small>
+                    </div>
+                </div>
+
+                <!-- Champion Tournament -->
+                <div class="map-card tournament-card" onclick="startTournament('champion')" style="background: linear-gradient(45deg, #FF9800, #FFD700); border-color: #FF9800; position: relative; overflow: hidden; height: 200px;">
+                    <div style="position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(45deg, #FF9800, #FFD700, #FF6B35, #FFD700, #FF9800); animation: legendaryPulse 1.5s ease-in-out infinite; z-index: 0;"></div>
+                    <div style="position: relative; z-index: 10; color: #000000; text-shadow: 2px 2px 4px rgba(255,255,255,0.8); font-weight: bold; text-align: center; padding: 10px;">
+                        <h3><span class="emoji" style="font-size: 28px;">🥇</span><br>CHAMPION TOURNAMENT</h3>
+                        <p style="margin: 8px 0; font-size: 15px;">Entry Fee: <strong>100 coins</strong></p>
+                        <p style="margin: 5px 0; font-size: 13px;">5 Rounds • Prize: <strong>500 coins</strong></p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #E65100;">vs Epic Characters</p>
+                        <small style="color: #000; font-weight: bold;">Best of 3 series each round</small>
+                    </div>
+                </div>
+
+                <!-- Legendary Tournament -->
+                <div class="map-card tournament-card" onclick="startTournament('legendary')" style="background: linear-gradient(45deg, #9C27B0, #E91E63); border-color: #9C27B0; position: relative; overflow: hidden; height: 200px;">
+                    <div style="position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(45deg, #9C27B0, #E91E63, #FF6B35, #E91E63, #9C27B0); animation: choosePulse 1.2s ease-in-out infinite; z-index: 0;"></div>
+                    <div style="position: relative; z-index: 10; color: #FFFFFF; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); font-weight: bold; text-align: center; padding: 10px;">
+                        <h3><span class="emoji" style="font-size: 28px;">👑</span><br>LEGENDARY TOURNAMENT</h3>
+                        <p style="margin: 8px 0; font-size: 15px;">Entry Fee: <strong>200 coins</strong></p>
+                        <p style="margin: 5px 0; font-size: 13px;">6 Rounds • Prize: <strong>1000 coins</strong></p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #FFD700;">vs Legendary Characters</p>
+                        <small style="color: #FFD700; font-weight: bold;">Best of 3 series each round</small>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tournamentStatus" style="margin-top: 30px; text-align: center; font-size: 18px; font-weight: bold; color: #000; display: none;">
+                <!-- Tournament progress will be shown here -->
+            </div>
+
+            <div style="position: sticky; bottom: 10px; z-index: 100; display: flex; gap: 10px; justify-content: center;">
+                <button class="button" onclick="showBattleModeSelect()">← Back</button>
+                <button class="button" onclick="forfeitTournament()" style="background: #FF4444; border-color: #FF4444;" id="forfeitButton">❌ Forfeit Tournament</button>
+            </div>
+        </div>
+
+        <!-- 2-Player Tournament Selection Screen -->
+        <div id="tournament2PlayerScreen" class="screen" style="background: linear-gradient(45deg, #9C27B0, #E91E63, #9C27B0); overflow-y: auto; padding: 20px;">
+            <h2 class="title" style="color: #FFF; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">👥 2-PLAYER TOURNAMENT 👥</h2>
+            <div class="player-selection-info" style="background: linear-gradient(45deg, #FF6B35, #F7931E); color: #FFD700; border: 2px solid #FFD700; font-size: 18px; margin-bottom: 30px;">
+                🏆 Both players start on opposite sides of the bracket! Meet in the finals if you both advance! 🏆
+            </div>
+
+            <div class="map-selection" style="grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto;">
+                <!-- Rookie 2P Tournament -->
+                <div class="map-card tournament-card" onclick="start2PlayerTournament('rookie')" style="background: linear-gradient(45deg, #4CAF50, #8BC34A); border-color: #4CAF50; position: relative; overflow: hidden; height: 220px;">
+                    <div style="position: relative; z-index: 10; color: #000000; text-shadow: 2px 2px 4px rgba(255,255,255,0.8); font-weight: bold; text-align: center; padding: 10px;">
+                        <h3><span class="emoji" style="font-size: 28px;">🥉</span><br>ROOKIE 2P TOURNAMENT</h3>
+                        <p style="margin: 8px 0; font-size: 15px;">Entry Fee: <strong>25 coins each</strong></p>
+                        <p style="margin: 5px 0; font-size: 13px;">3 Rounds • Prize: <strong>100 coins</strong></p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #2E7D32;">vs Common Characters</p>
+                        <small style="color: #000; font-weight: bold;">Take turns playing series</small>
+                        <small style="display: block; color: #000; font-weight: bold;">Meet in finals if both advance!</small>
+                    </div>
+                </div>
+
+                <!-- Pro 2P Tournament -->
+                <div class="map-card tournament-card" onclick="start2PlayerTournament('pro')" style="background: linear-gradient(45deg, #2196F3, #03A9F4); border-color: #2196F3; position: relative; overflow: hidden; height: 220px;">
+                    <div style="position: relative; z-index: 10; color: #000000; text-shadow: 2px 2px 4px rgba(255,255,255,0.8); font-weight: bold; text-align: center; padding: 10px;">
+                        <h3><span class="emoji" style="font-size: 28px;">🥈</span><br>PRO 2P TOURNAMENT</h3>
+                        <p style="margin: 8px 0; font-size: 15px;">Entry Fee: <strong>50 coins each</strong></p>
+                        <p style="margin: 5px 0; font-size: 13px;">4 Rounds • Prize: <strong>300 coins</strong></p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #1565C0;">vs Rare Characters</p>
+                        <small style="color: #000; font-weight: bold;">Take turns playing series</small>
+                        <small style="display: block; color: #000; font-weight: bold;">Meet in finals if both advance!</small>
+                    </div>
+                </div>
+
+                <!-- Champion 2P Tournament -->
+                <div class="map-card tournament-card" onclick="start2PlayerTournament('champion')" style="background: linear-gradient(45deg, #FF9800, #FFD700); border-color: #FF9800; position: relative; overflow: hidden; height: 220px;">
+                    <div style="position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(45deg, #FF9800, #FFD700, #FF6B35, #FFD700, #FF9800); animation: legendaryPulse 1.5s ease-in-out infinite; z-index: 0;"></div>
+                    <div style="position: relative; z-index: 10; color: #000000; text-shadow: 2px 2px 4px rgba(255,255,255,0.8); font-weight: bold; text-align: center; padding: 10px;">
+                        <h3><span class="emoji" style="font-size: 28px;">🥇</span><br>CHAMPION 2P TOURNAMENT</h3>
+                        <p style="margin: 8px 0; font-size: 15px;">Entry Fee: <strong>100 coins each</strong></p>
+                        <p style="margin: 5px 0; font-size: 13px;">5 Rounds • Prize: <strong>750 coins</strong></p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #E65100;">vs Epic Characters</p>
+                        <small style="color: #000; font-weight: bold;">Take turns playing series</small>
+                        <small style="display: block; color: #000; font-weight: bold;">Meet in finals if both advance!</small>
+                    </div>
+                </div>
+
+                <!-- Legendary 2P Tournament -->
+                <div class="map-card tournament-card" onclick="start2PlayerTournament('legendary')" style="background: linear-gradient(45deg, #9C27B0, #E91E63); border-color: #9C27B0; position: relative; overflow: hidden; height: 220px;">
+                    <div style="position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(45deg, #9C27B0, #E91E63, #FF6B35, #E91E63, #9C27B0); animation: choosePulse 1.2s ease-in-out infinite; z-index: 0;"></div>
+                    <div style="position: relative; z-index: 10; color: #FFFFFF; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); font-weight: bold; text-align: center; padding: 10px;">
+                        <h3><span class="emoji" style="font-size: 28px;">👑</span><br>LEGENDARY 2P TOURNAMENT</h3>
+                        <p style="margin: 8px 0; font-size: 15px;">Entry Fee: <strong>200 coins each</strong></p>
+                        <p style="margin: 5px 0; font-size: 13px;">6 Rounds • Prize: <strong>1500 coins</strong></p>
+                        <p style="margin: 5px 0; font-size: 12px; color: #FFD700;">vs Legendary Characters</p>
+                        <small style="color: #FFD700; font-weight: bold;">Take turns playing series</small>
+                        <small style="display: block; color: #FFD700; font-weight: bold;">Meet in finals if both advance!</small>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tournament2PlayerStatus" style="margin-top: 30px; text-align: center; font-size: 18px; font-weight: bold; color: #FFF; display: none;">
+                <!-- 2-Player tournament progress will be shown here -->
+            </div>
+
+            <div style="position: sticky; bottom: 10px; z-index: 100; display: flex; gap: 10px; justify-content: center;">
+                <button class="button" onclick="showBattleModeSelect()">← Back</button>
+                <button class="button" onclick="forfeit2PlayerTournament()" style="background: #FF4444; border-color: #FF4444;" id="forfeit2PlayerButton">❌ Forfeit Tournament</button>
+            </div>
         </div>
 
         <!-- Choose Character Screen for 1000 Coin Chest -->
@@ -1168,14 +1318,7 @@
                     <div id="player2Health" class="health-fill" style="width: 100%"></div>
                 </div>
             </div>
-            <div class="controls">
-                <strong>Controls:</strong><br>
-                W - Jump<br>
-                A/D - Move Left/Right<br>
-                S - Normal Attack<br>
-                E - Special Attack (13s cooldown)<br>
-                ESC - Pause
-            </div>
+
             <button class="button" style="position: fixed; top: 20px; right: 20px; z-index: 10; background: rgba(255,0,0,0.8); border: 2px solid #fff; backdrop-filter: blur(10px);" onclick="endBattle()">← Menu</button>
         </div>
     </div>
@@ -1211,15 +1354,17 @@
         }
         
         @keyframes choosePulse {
-            0%, 100% { 
-                opacity: 0.8; 
+            0%, 100% {
+                opacity: 0.8;
                 transform: scale(1);
             }
-            50% { 
-                opacity: 1; 
+            50% {
+                opacity: 1;
                 transform: scale(1.05);
             }
         }
+
+
 
         /* Trophy Road Animations */
         @keyframes claimPulse {
@@ -1311,21 +1456,93 @@
 
         let gameState = {
             gameMode: null, // 'singleplayer' or 'multiplayer' - selected first
-            selectedBattleMode: 'normal', // 'normal' or 'special_drop'
+            selectedBattleMode: 'normal', // 'normal', 'special_drop', or 'flag_capture'
             currentShopPlayer: 1, // For multiplayer: which player is shopping (1 or 2)
-            
+
             // Single Player Data
             coins: 100,
             unlockedCharacters: ['Spider', 'Fire', 'Ice'],
             trophies: 0, // Trophy count for single player ONLY
-            
+
             // Multiplayer Data - Separate inventories
             player1Coins: 75,
             player2Coins: 75,
             player1Characters: ['Spider', 'Fire', 'Ice'],
             player2Characters: ['Cat', 'Dog', 'Boxer'],
             // NO trophies in multiplayer mode
-            
+
+            // Tournament System
+            tournamentMode: false,
+            tournamentData: {
+                entryFee: 0,
+                currentRound: 0,
+                totalRounds: 0,
+                roundNames: [],
+                prizePool: 0,
+                isActive: false,
+                roundsWon: 0
+            },
+
+            // 2-Player Tournament System
+            tournament2PlayerMode: false,
+            tournament2PlayerData: {
+                entryFee: 0,
+                currentRound: 0,
+                totalRounds: 0,
+                roundNames: [],
+                prizePool: 0,
+                characterTier: 'common',
+                seriesLength: 3,
+                isActive: false,
+
+                // Player states
+                player1: {
+                    roundsWon: 0,
+                    isEliminated: false,
+                    currentSeries: {
+                        playerWins: 0,
+                        opponentWins: 0,
+                        gamesPlayed: 0,
+                        playerCharacter: null,
+                        opponentCharacter: null
+                    }
+                },
+                player2: {
+                    roundsWon: 0,
+                    isEliminated: false,
+                    currentSeries: {
+                        playerWins: 0,
+                        opponentWins: 0,
+                        gamesPlayed: 0,
+                        playerCharacter: null,
+                        opponentCharacter: null
+                    }
+                },
+
+                // Tournament flow
+                currentPlayer: 1, // Which player is currently playing
+                bracket: null,
+                finalMatch: false // True when both players meet in finals
+            },
+
+            // Flag Capture Mode State
+            flagCapture: {
+                flag: null, // Flag object
+                flagHolder: null, // 'player1', 'player2', or null
+                holdStartTime: 0, // When the flag was picked up
+                holdDuration: 15000, // 15 seconds to win
+                flagDropped: false,
+                nextFlagDropTime: 0,
+                flagDropInterval: 8000, // Flag drops every 8 seconds if not held
+                stunned: {
+                    player1: false,
+                    player2: false,
+                    player1StunTime: 0,
+                    player2StunTime: 0,
+                    stunDuration: 2000 // 2 seconds stun
+                }
+            },
+
             // Trophy Road Progress (SINGLE PLAYER ONLY)
             claimedMilestones: [], // Track which milestones have been claimed
             
@@ -1879,6 +2096,363 @@
             }
         };
 
+        // Boss Class for Boss Battle Mode
+        class Boss {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 120; // Much larger than normal fighters
+                this.height = 120;
+                this.maxHealth = 2000; // Very high HP
+                this.health = this.maxHealth;
+                this.damage = 160; // 2x damage (was 80)
+                this.specialDamage = 300; // 2x special damage (was 150)
+                this.speed = 4; // 2x speed (was 2)
+                this.direction = -1; // Start facing left
+                this.velocityY = 0;
+                this.onGround = false;
+                this.jumpPower = -20;
+
+                // Boss appearance
+                this.emoji = '🐉'; // Dragon boss
+                this.name = 'Ancient Dragon';
+                this.color = '#8B0000';
+
+                // Attack cooldowns - 2x faster attacks
+                this.canAttack = true;
+                this.attackCooldown = 0;
+                this.canSpecialAttack = true;
+                this.specialAttackCooldown = 0;
+                this.reloadTime = 1000; // 1 second normal attack cooldown (was 2000)
+                this.specialReloadTime = 2500; // 2.5 second special attack cooldown (was 5000)
+
+                // Boss special abilities
+                this.rageMode = false;
+                this.rageModeThreshold = 0.3; // Activate rage at 30% HP
+                this.shakeMode = false;
+                this.shakeModeThreshold = 0.25; // Activate screen shake at 25% HP
+                this.lastAttackTime = 0;
+                this.attackPattern = 0; // Cycle through different attack patterns
+
+                // Boss phases
+                this.phase = 1; // Start in phase 1
+                this.phaseTransition = false;
+
+                console.log(`🐉 Boss created: ${this.name} with ${this.maxHealth} HP`);
+            }
+
+            update() {
+                // Apply gravity
+                this.velocityY += 0.8;
+                this.y += this.velocityY;
+
+                // Platform collision (if battle is initialized)
+                if (gameState.battle && gameState.battle.mapData && gameState.battle.mapData.platforms) {
+                    for (let platform of gameState.battle.mapData.platforms) {
+                        // Check if boss is falling onto platform
+                        if (this.velocityY > 0 &&
+                            this.x + this.width > platform.x &&
+                            this.x < platform.x + platform.width &&
+                            this.y + this.height > platform.y &&
+                            this.y + this.height < platform.y + platform.height + this.velocityY) {
+
+                            this.y = platform.y - this.height;
+                            this.velocityY = 0;
+                            this.onGround = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Ground collision
+                const groundLevel = gameState.battle ? gameState.battle.groundLevel : (window.innerHeight - 120);
+                if (this.y >= groundLevel - this.height) {
+                    this.y = groundLevel - this.height;
+                    this.velocityY = 0;
+                    this.onGround = true;
+                } else if (!this.onGround) {
+                    this.onGround = false;
+                }
+
+                // Update attack cooldowns
+                if (!this.canAttack && this.attackCooldown > 0) {
+                    this.attackCooldown -= 16.67;
+                    if (this.attackCooldown <= 0) {
+                        this.canAttack = true;
+                    }
+                }
+
+                if (!this.canSpecialAttack && this.specialAttackCooldown > 0) {
+                    this.specialAttackCooldown -= 16.67;
+                    if (this.specialAttackCooldown <= 0) {
+                        this.canSpecialAttack = true;
+                    }
+                }
+
+                // Check for rage mode
+                if (!this.rageMode && this.health <= this.maxHealth * this.rageModeThreshold) {
+                    this.enterRageMode();
+                }
+
+                // Check for shake mode (25% HP)
+                if (!this.shakeMode && this.health <= this.maxHealth * this.shakeModeThreshold) {
+                    this.enterShakeMode();
+                }
+
+                // Check for phase transitions
+                if (this.phase === 1 && this.health <= this.maxHealth * 0.66) {
+                    this.enterPhase2();
+                } else if (this.phase === 2 && this.health <= this.maxHealth * 0.33) {
+                    this.enterPhase3();
+                }
+
+                // AI behavior
+                this.updateAI();
+            }
+
+            enterRageMode() {
+                this.rageMode = true;
+                this.damage *= 1.5; // 50% more damage
+                this.specialDamage *= 1.5;
+                this.speed *= 1.3; // 30% faster
+                this.reloadTime *= 0.7; // 30% faster attacks
+                this.specialReloadTime *= 0.7;
+                console.log(`🔥 ${this.name} enters RAGE MODE!`);
+                showNotification(`🔥 BOSS RAGE MODE ACTIVATED!`);
+            }
+
+            enterShakeMode() {
+                this.shakeMode = true;
+                console.log(`💥 ${this.name} is critically wounded! Screen shaking!`);
+                showNotification(`💥 BOSS CRITICAL! SCREEN SHAKE!`);
+            }
+
+            enterPhase2() {
+                this.phase = 2;
+                this.phaseTransition = true;
+                setTimeout(() => this.phaseTransition = false, 2000);
+                console.log(`⚡ ${this.name} enters Phase 2!`);
+                showNotification(`⚡ BOSS PHASE 2!`);
+            }
+
+            enterPhase3() {
+                this.phase = 3;
+                this.phaseTransition = true;
+                setTimeout(() => this.phaseTransition = false, 2000);
+                this.emoji = '🔥'; // Change appearance in final phase
+                console.log(`💀 ${this.name} enters FINAL PHASE!`);
+                showNotification(`💀 BOSS FINAL PHASE!`);
+            }
+
+            updateAI() {
+                // Don't move during phase transitions
+                if (this.phaseTransition) return;
+
+                // Safety check - make sure battle is initialized
+                if (!gameState.battle || !gameState.battle.player1 || !gameState.battle.player2) {
+                    return;
+                }
+
+                // Find closest player
+                const player1 = gameState.battle.player1;
+                const player2 = gameState.battle.player2;
+
+                const dist1 = Math.abs(this.x - player1.x);
+                const dist2 = Math.abs(this.x - player2.x);
+
+                const target = dist1 < dist2 ? player1 : player2;
+                const distance = Math.abs(this.x - target.x);
+
+                // Movement AI
+                if (distance > 150) {
+                    // Move toward closest player
+                    if (target.x > this.x) {
+                        this.x += this.speed;
+                        this.direction = 1;
+                    } else {
+                        this.x -= this.speed;
+                        this.direction = -1;
+                    }
+                }
+
+                // Jump if target is above
+                if (target.y < this.y - 50 && this.onGround && Math.random() < 0.02) {
+                    this.jump();
+                }
+
+                // Attack patterns based on phase
+                if (this.canAttack && distance < 200) {
+                    if (this.phase === 1) {
+                        // Phase 1: Basic attacks
+                        if (Math.random() < 0.015) {
+                            this.normalAttack();
+                        }
+                    } else if (this.phase === 2) {
+                        // Phase 2: More aggressive
+                        if (Math.random() < 0.025) {
+                            this.normalAttack();
+                        }
+                    } else if (this.phase === 3) {
+                        // Phase 3: Very aggressive
+                        if (Math.random() < 0.035) {
+                            this.normalAttack();
+                        }
+                    }
+                }
+
+                // Special attacks
+                if (this.canSpecialAttack && distance < 250) {
+                    const specialChance = this.phase === 1 ? 0.005 : this.phase === 2 ? 0.008 : 0.012;
+                    if (Math.random() < specialChance) {
+                        this.specialAttack();
+                    }
+                }
+            }
+
+            jump() {
+                if (this.onGround) {
+                    this.velocityY = this.jumpPower;
+                    this.onGround = false;
+                }
+            }
+
+            normalAttack() {
+                if (!this.canAttack) return;
+
+                // Safety check - make sure battle is initialized
+                if (!gameState.battle || !gameState.battle.projectiles) {
+                    return;
+                }
+
+                // Create multiple projectiles for boss
+                const projectileCount = this.phase;
+                for (let i = 0; i < projectileCount; i++) {
+                    const angle = (i - (projectileCount - 1) / 2) * 0.3; // Spread projectiles
+                    const projectile = new Projectile(
+                        this.x + (this.direction > 0 ? this.width : 0),
+                        this.y + this.height / 2 + (i * 20),
+                        this.direction * 6 * Math.cos(angle),
+                        this.damage,
+                        this.color,
+                        this
+                    );
+                    projectile.velocityY = -3 * Math.sin(angle); // Add vertical component
+                    gameState.battle.projectiles.push(projectile);
+                }
+
+                this.canAttack = false;
+                this.attackCooldown = this.reloadTime;
+                console.log(`🐉 Boss normal attack: ${this.damage} damage x${projectileCount}`);
+            }
+
+            specialAttack() {
+                if (!this.canSpecialAttack) return;
+
+                // Safety check - make sure battle is initialized
+                if (!gameState.battle || !gameState.battle.projectiles) {
+                    return;
+                }
+
+                // Boss special: Fire breath in wide arc
+                const projectileCount = 5 + this.phase * 2; // More projectiles in later phases
+                for (let i = 0; i < projectileCount; i++) {
+                    const angle = (i / (projectileCount - 1) - 0.5) * Math.PI * 0.6; // 60 degree arc
+                    const projectile = new Projectile(
+                        this.x + this.width / 2,
+                        this.y + this.height / 2,
+                        8 * Math.cos(angle) * this.direction,
+                        this.specialDamage,
+                        '#FF4500', // Orange fire color
+                        this
+                    );
+                    projectile.velocityY = -8 * Math.sin(angle);
+                    gameState.battle.projectiles.push(projectile);
+                }
+
+                this.canSpecialAttack = false;
+                this.specialAttackCooldown = this.specialReloadTime;
+                console.log(`🔥 Boss FIRE BREATH: ${this.specialDamage} damage x${projectileCount}!`);
+                showNotification(`🔥 BOSS FIRE BREATH!`);
+            }
+
+            takeDamage(damage, attacker) {
+                this.health -= damage;
+                console.log(`🐉 Boss takes ${damage} damage! HP: ${this.health}/${this.maxHealth}`);
+
+                if (this.health <= 0) {
+                    this.health = 0;
+                    console.log(`💀 Boss defeated!`);
+                    // Safety check before calling endBossBattle
+                    if (gameState.battle && gameState.battle.endBossBattle) {
+                        gameState.battle.endBossBattle(true); // Players win
+                    }
+                }
+            }
+
+            draw(ctx) {
+                // Boss body (larger rectangle)
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+
+                // Boss emoji (much larger)
+                ctx.font = '80px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // Phase transition effect
+                if (this.phaseTransition) {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.shadowColor = '#FFFFFF';
+                    ctx.shadowBlur = 20;
+                } else if (this.rageMode) {
+                    ctx.fillStyle = '#FF0000';
+                    ctx.shadowColor = '#FF0000';
+                    ctx.shadowBlur = 10;
+                } else {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.shadowBlur = 0;
+                }
+
+                ctx.fillText(this.emoji, this.x + this.width / 2, this.y + this.height / 2);
+                ctx.shadowBlur = 0;
+
+                // Boss health bar (large, at top of screen)
+                const barWidth = 600;
+                const barHeight = 30;
+                const barX = (ctx.canvas.width - barWidth) / 2;
+                const barY = 50;
+
+                // Background
+                ctx.fillStyle = '#333333';
+                ctx.fillRect(barX - 5, barY - 5, barWidth + 10, barHeight + 10);
+
+                // Health bar background
+                ctx.fillStyle = '#660000';
+                ctx.fillRect(barX, barY, barWidth, barHeight);
+
+                // Health bar fill
+                const healthPercent = this.health / this.maxHealth;
+                let barColor = '#00FF00';
+                if (healthPercent < 0.66) barColor = '#FFFF00';
+                if (healthPercent < 0.33) barColor = '#FF0000';
+
+                ctx.fillStyle = barColor;
+                ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+
+                // Boss name and phase
+                ctx.font = '24px Arial';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${this.name} - Phase ${this.phase}${this.rageMode ? ' (RAGE)' : ''}`,
+                           ctx.canvas.width / 2, barY - 15);
+
+                // Health text
+                ctx.font = '18px Arial';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText(`${this.health}/${this.maxHealth} HP`, ctx.canvas.width / 2, barY + barHeight + 25);
+            }
+        }
+
         // Battle System with Arena Obstacles and Special Features
         class Battle {
             constructor(playerChar, enemyChar, mapType) {
@@ -1906,11 +2480,22 @@
                 const enemyStartX = Math.floor(this.canvas.width * 0.8);   // 80% from left
                 const groundY = this.canvas.height - 120;                  // Use same level as groundLevel
 
-                this.player1 = new Fighter(playerChar, playerStartX, groundY, 'player');
-                this.player2 = new Fighter(enemyChar, enemyStartX, groundY, 'enemy');
-
-                // Set ground level higher for better gameplay space
+                // Set ground level higher for better gameplay space (BEFORE creating entities)
                 this.groundLevel = this.canvas.height - 120; // Raised from 50 to 120
+
+                this.player1 = new Fighter(playerChar, playerStartX, groundY, 'player');
+
+                // Check if this is boss battle mode
+                if (gameState.selectedBattleMode === 'boss_battle') {
+                    this.isBossBattleMode = true;
+                    this.boss = new Boss(enemyStartX, groundY);
+                    // In boss battle, player2 is also a player (cooperative mode)
+                    this.player2 = new Fighter(enemyChar, playerStartX + 100, groundY, 'player');
+                    console.log('🐉 Boss Battle Mode initialized!');
+                } else {
+                    this.isBossBattleMode = false;
+                    this.player2 = new Fighter(enemyChar, enemyStartX, groundY, 'enemy');
+                }
 
                 // Handle window resize
                 this.handleResize = () => {
@@ -1934,7 +2519,8 @@
                 this.projectiles = [];
                 this.gameRunning = true;
                 this.keys = {};
-                this.timeLeft = 90000; // 1 minute 30 seconds
+                // Boss battles get more time (3 minutes), normal battles get 1.5 minutes
+                this.timeLeft = this.isBossBattleMode ? 180000 : 90000;
                 this.lastTime = Date.now();
                 this.mapEffects = [];
                 this.hazards = this.mapData.hazards ? [...this.mapData.hazards] : [];
@@ -1944,6 +2530,13 @@
                 this.dropTimer = 0;
                 this.dropInterval = this.getRandomDropInterval(); // Random 15-30 seconds
                 this.isSpecialDropMode = gameState.selectedBattleMode === 'special_drop';
+
+                // FLAG CAPTURE MODE SYSTEM!
+                this.isFlagCaptureMode = gameState.selectedBattleMode === 'flag_capture';
+                console.log('🏁 Flag capture mode check:', this.isFlagCaptureMode, 'Selected mode:', gameState.selectedBattleMode);
+                if (this.isFlagCaptureMode) {
+                    this.initializeFlagCapture();
+                }
                 
                 // BACKGROUND GRID SYSTEM!
                 this.backgroundGrid = this.initializeBackgroundGrid();
@@ -2028,19 +2621,26 @@
                 document.addEventListener('keydown', (e) => {
                     this.keys[e.code] = true;
                     
-                    // Player 1 controls
-                    if (e.code === 'KeyS') {
-                        this.player1.normalAttack();
+                    // Player 1 controls (check for stun in flag capture mode)
+                    const player1Stunned = this.isFlagCaptureMode && gameState.flagCapture.stunned.player1;
+                    if (!player1Stunned) {
+                        if (e.code === 'KeyS') {
+                            this.player1.normalAttack();
+                        }
+                        if (e.code === 'KeyE') {
+                            this.player1.specialAttack();
+                        }
+                        if (e.code === 'KeyQ') {
+                            this.player1.useItem();
+                        }
+                        if (e.code === 'KeyR') {
+                            this.player1.tryTeleport();
+                        }
                     }
-                    if (e.code === 'KeyE') {
-                        this.player1.specialAttack();
-                    }
-                    if (e.code === 'KeyQ') {
-                        this.player1.useItem();
-                    }
-                    
-                    // Player 2 controls (multiplayer only)
-                    if (gameState.gameMode === 'multiplayer') {
+
+                    // Player 2 controls (multiplayer or boss battle mode, check for stun in flag capture mode)
+                    const player2Stunned = this.isFlagCaptureMode && gameState.flagCapture.stunned.player2;
+                    if ((gameState.gameMode === 'multiplayer' || this.isBossBattleMode) && !player2Stunned) {
                         if (e.code === 'ArrowDown') {
                             this.player2.normalAttack();
                         }
@@ -2049,6 +2649,9 @@
                         }
                         if (e.code === 'Enter') {
                             this.player2.useItem();
+                        }
+                        if (e.code === 'Numpad0') {
+                            this.player2.tryTeleport();
                         }
                     }
                     
@@ -2106,40 +2709,54 @@
                     return;
                 }
 
-                // Player 1 movement
-                if (this.keys['KeyW']) {
-                    this.player1.jump();
-                }
-                if (this.keys['KeyA']) {
-                    this.player1.x -= this.player1.getMovementSpeed();
-                    this.player1.direction = -1;
-                }
-                if (this.keys['KeyD']) {
-                    this.player1.x += this.player1.getMovementSpeed();
-                    this.player1.direction = 1;
+                // Player 1 movement (check for stun in flag capture mode)
+                const player1Stunned = this.isFlagCaptureMode && gameState.flagCapture.stunned.player1;
+                if (!player1Stunned) {
+                    if (this.keys['KeyW']) {
+                        this.player1.jump();
+                    }
+                    if (this.keys['KeyA']) {
+                        this.player1.x -= this.player1.getMovementSpeed();
+                        this.player1.direction = -1;
+                    }
+                    if (this.keys['KeyD']) {
+                        this.player1.x += this.player1.getMovementSpeed();
+                        this.player1.direction = 1;
+                    }
                 }
 
-                // Player 2 movement
-                if (gameState.gameMode === 'multiplayer') {
-                    if (this.keys['ArrowUp']) {
-                        this.player2.jump();
-                    }
-                    if (this.keys['ArrowLeft']) {
-                        this.player2.x -= this.player2.getMovementSpeed();
-                        this.player2.direction = -1;
-                    }
-                    if (this.keys['ArrowRight']) {
-                        this.player2.x += this.player2.getMovementSpeed();
-                        this.player2.direction = 1;
+                // Player 2 movement (check for stun in flag capture mode)
+                const player2Stunned = this.isFlagCaptureMode && gameState.flagCapture.stunned.player2;
+                if (gameState.gameMode === 'multiplayer' || this.isBossBattleMode) {
+                    // In boss battle mode, player 2 is also controlled by human
+                    if (!player2Stunned) {
+                        if (this.keys['ArrowUp']) {
+                            this.player2.jump();
+                        }
+                        if (this.keys['ArrowLeft']) {
+                            this.player2.x -= this.player2.getMovementSpeed();
+                            this.player2.direction = -1;
+                        }
+                        if (this.keys['ArrowRight']) {
+                            this.player2.x += this.player2.getMovementSpeed();
+                            this.player2.direction = 1;
+                        }
                     }
                 } else {
-                    // SMART AI with dodging and close-range tactics
-                    this.updateAI();
+                    // SMART AI with dodging and close-range tactics (also check for stun)
+                    if (!player2Stunned) {
+                        this.updateAI();
+                    }
                 }
 
                 // Update fighters
                 this.player1.update();
                 this.player2.update();
+
+                // Update boss if in boss battle mode
+                if (this.isBossBattleMode && this.boss) {
+                    this.boss.update();
+                }
 
                 // Update projectiles
                 this.projectiles.forEach((projectile, index) => {
@@ -2147,7 +2764,7 @@
                     
                     // Check collision with players
                     if (projectile.owner !== this.player1 && this.checkCollision(projectile, this.player1)) {
-                        this.player1.takeDamage(projectile.damage);
+                        this.player1.takeDamage(projectile.damage, projectile.owner);
                         // Apply lifesteal to the attacker (projectile owner)
                         if (projectile.owner && projectile.owner.applyLifesteal) {
                             projectile.owner.applyLifesteal(projectile.damage);
@@ -2160,7 +2777,22 @@
                         return;
                     }
                     if (projectile.owner !== this.player2 && this.checkCollision(projectile, this.player2)) {
-                        this.player2.takeDamage(projectile.damage);
+                        this.player2.takeDamage(projectile.damage, projectile.owner);
+                        // Apply lifesteal to the attacker (projectile owner)
+                        if (projectile.owner && projectile.owner.applyLifesteal) {
+                            projectile.owner.applyLifesteal(projectile.damage);
+                        }
+                        // Call onHit for special head projectiles
+                        if (projectile.onHit) {
+                            projectile.onHit();
+                        }
+                        this.projectiles.splice(index, 1);
+                        return;
+                    }
+
+                    // Check collision with boss (if in boss battle mode)
+                    if (this.isBossBattleMode && this.boss && projectile.owner !== this.boss && this.checkCollision(projectile, this.boss)) {
+                        this.boss.takeDamage(projectile.damage, projectile.owner);
                         // Apply lifesteal to the attacker (projectile owner)
                         if (projectile.owner && projectile.owner.applyLifesteal) {
                             projectile.owner.applyLifesteal(projectile.damage);
@@ -2199,12 +2831,29 @@
                     this.updateSpecialDrops();
                 }
 
+                // FLAG CAPTURE MODE - Update flag capture system!
+                if (this.isFlagCaptureMode) {
+                    this.updateFlagCapture();
+                    // Debug: Check if game loop is running
+                    if (Math.random() < 0.01) { // Log occasionally
+                        console.log('🏁 Flag capture update running, flag exists:', !!gameState.flagCapture.flag);
+                    }
+                }
+
                 // Update UI
                 this.updateUI();
 
                 // Check win condition
-                if (this.player1.health <= 0 || this.player2.health <= 0) {
-                    this.endGame();
+                if (this.isBossBattleMode) {
+                    // In boss battle mode, only end if BOTH players are dead
+                    if (this.player1.health <= 0 && this.player2.health <= 0) {
+                        this.endGame();
+                    }
+                } else {
+                    // In normal modes, end if ANY player dies
+                    if (this.player1.health <= 0 || this.player2.health <= 0) {
+                        this.endGame();
+                    }
                 }
             }
 
@@ -2299,6 +2948,14 @@
             }
 
             updateScreenShake() {
+                // Boss shake mode - intense continuous shaking
+                if (this.isBossBattleMode && this.boss && this.boss.shakeMode) {
+                    const bossShakeIntensity = 15; // Very intense shaking
+                    this.screenShake.offsetX = (Math.random() - 0.5) * bossShakeIntensity;
+                    this.screenShake.offsetY = (Math.random() - 0.5) * bossShakeIntensity;
+                    return; // Skip normal shake logic
+                }
+
                 if (this.screenShake.duration > 0) {
                     // Generate random shake offset
                     const shakeAmount = this.screenShake.intensity * (this.screenShake.duration / 60);
@@ -2312,6 +2969,9 @@
                         this.screenShake.offsetX = 0;
                         this.screenShake.offsetY = 0;
                     }
+                } else {
+                    this.screenShake.offsetX = 0;
+                    this.screenShake.offsetY = 0;
                 }
             }
 
@@ -2541,9 +3201,17 @@
 
                 this.ctx.fillStyle = '#FFD700';
                 this.ctx.font = `bold ${finalTimerFontSize}px Arial`;
-                this.ctx.textAlign = 'center';
                 const timeSeconds = Math.max(0, Math.ceil(this.timeLeft / 1000));
-                this.ctx.fillText(`Time: ${timeSeconds}s`, this.canvas.width / 2, finalTimerFontSize + 20);
+
+                if (this.isBossBattleMode) {
+                    // Boss battle: timer in bottom right
+                    this.ctx.textAlign = 'right';
+                    this.ctx.fillText(`Time: ${timeSeconds}s`, this.canvas.width - 20, this.canvas.height - 20);
+                } else {
+                    // Normal battles: timer at top center
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(`Time: ${timeSeconds}s`, this.canvas.width / 2, finalTimerFontSize + 20);
+                }
 
                 // Draw hitbox status indicator
                 this.ctx.fillStyle = this.showHitboxes ? '#00FF00' : '#FF0000';
@@ -2560,10 +3228,49 @@
                 this.player1.draw(this.ctx);
                 this.player2.draw(this.ctx);
 
+                // Draw boss (if in boss battle mode)
+                if (this.isBossBattleMode && this.boss) {
+                    this.boss.draw(this.ctx);
+
+                    // Draw boss health bar at top of screen
+                    const barWidth = this.canvas.width * 0.6;
+                    const barHeight = 30;
+                    const barX = (this.canvas.width - barWidth) / 2;
+                    const barY = 20;
+
+                    // Background
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    this.ctx.fillRect(barX - 5, barY - 5, barWidth + 10, barHeight + 10);
+
+                    // Health bar background
+                    this.ctx.fillStyle = '#333';
+                    this.ctx.fillRect(barX, barY, barWidth, barHeight);
+
+                    // Health bar fill - darker, less bright colors
+                    const healthPercent = this.boss.health / this.boss.maxHealth;
+                    const healthColor = healthPercent > 0.6 ? '#8B0000' : healthPercent > 0.3 ? '#B8860B' : '#8B0000'; // Dark red, dark gold, dark red
+                    this.ctx.fillStyle = healthColor;
+                    this.ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+
+                    // Boss name and phase
+                    this.ctx.fillStyle = '#FFFFFF';
+                    this.ctx.font = 'bold 16px Arial';
+                    this.ctx.textAlign = 'center';
+                    const phaseText = this.boss.rageMode ? 'RAGE' : `Phase ${this.boss.phase}`;
+                    this.ctx.fillText(`${this.boss.name} - ${phaseText}`, this.canvas.width / 2, barY + 18);
+
+                    // Health numbers
+                    this.ctx.font = 'bold 12px Arial';
+                    this.ctx.fillText(`${Math.max(0, Math.floor(this.boss.health))} / ${this.boss.maxHealth}`, this.canvas.width / 2, barY + 45);
+                }
+
                 // Draw circular hitboxes for testing (debug mode)
                 if (this.showHitboxes) {
                     this.drawHitbox(this.player1, 'rgba(0, 255, 0, 0.3)'); // Green for player 1
-                    this.drawHitbox(this.player2, 'rgba(255, 0, 0, 0.3)'); // Red for player 2
+                    this.drawHitbox(this.player2, 'rgba(0, 255, 0, 0.3)'); // Green for player 2 (both are players in boss mode)
+                    if (this.isBossBattleMode && this.boss) {
+                        this.drawHitbox(this.boss, 'rgba(255, 0, 0, 0.3)'); // Red for boss
+                    }
                 }
 
                 // Draw projectiles
@@ -2574,6 +3281,11 @@
                         this.drawHitbox(projectile, 'rgba(255, 255, 0, 0.3)'); // Yellow for projectiles
                     }
                 });
+
+                // Draw flag (flag capture mode)
+                if (this.isFlagCaptureMode) {
+                    this.drawFlag();
+                }
 
                 // Draw visual effects
                 this.drawVisualEffects();
@@ -2609,6 +3321,66 @@
                             break;
                     }
                 });
+            }
+
+            drawFlag() {
+                try {
+                    // Draw flag if it exists in the world
+                    if (gameState.flagCapture.flag) {
+                        // Flag rendering (debug logging removed)
+                        gameState.flagCapture.flag.render(this.ctx);
+                    }
+                } catch (error) {
+                    console.error('🏁 Error in drawFlag:', error);
+                    // Reset flag if there's a rendering error
+                    gameState.flagCapture.flag = null;
+                }
+
+                // Draw flag holder timer
+                if (gameState.flagCapture.flagHolder) {
+                    const holder = gameState.flagCapture.flagHolder === 'player1' ? this.player1 : this.player2;
+
+                    // Draw hold timer
+                    const currentTime = Date.now();
+                    const holdTime = currentTime - gameState.flagCapture.holdStartTime;
+                    const remainingTime = Math.max(0, gameState.flagCapture.holdDuration - holdTime);
+                    const seconds = Math.ceil(remainingTime / 1000);
+
+                    // Progress bar background
+                    const barWidth = 100;
+                    const barHeight = 8;
+                    const barX = holder.x + holder.width/2 - barWidth/2;
+                    const barY = holder.y - 50;
+
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    this.ctx.fillRect(barX, barY, barWidth, barHeight);
+
+                    // Progress bar fill
+                    const progress = holdTime / gameState.flagCapture.holdDuration;
+                    const fillWidth = barWidth * progress;
+                    this.ctx.fillStyle = progress > 0.8 ? '#00FF00' : progress > 0.5 ? '#FFFF00' : '#FF6600';
+                    this.ctx.fillRect(barX, barY, fillWidth, barHeight);
+
+                    // Timer text
+                    this.ctx.fillStyle = '#FFFFFF';
+                    this.ctx.font = 'bold 14px Arial';
+                    this.ctx.strokeStyle = '#000000';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeText(`${seconds}s`, holder.x + holder.width/2, barY - 5);
+                    this.ctx.fillText(`${seconds}s`, holder.x + holder.width/2, barY - 5);
+                }
+
+                // Draw stun indicators
+                if (gameState.flagCapture.stunned.player1) {
+                    this.ctx.font = '25px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText('💫', this.player1.x + this.player1.width/2, this.player1.y - 10);
+                }
+                if (gameState.flagCapture.stunned.player2) {
+                    this.ctx.font = '25px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText('💫', this.player2.x + this.player2.width/2, this.player2.y - 10);
+                }
             }
 
             drawMapBackground() {
@@ -3263,25 +4035,7 @@
                         console.log(`Lightning strikes ${enemy.char.name} for ${itemData.damage} damage!`);
                         break;
                         
-                    case 'debuff':
-                        // Freeze enemy
-                        if (itemData.freezeDuration) {
-                            const enemy = player === this.player1 ? this.player2 : this.player1;
-                            if (!enemy.itemEffects) enemy.itemEffects = {};
-                            enemy.itemEffects.frozen = {
-                                duration: itemData.freezeDuration
-                            };
-                            console.log(`${enemy.char.name} is frozen for ${itemData.freezeDuration/1000} seconds!`);
-                        }
-                        break;
-                        
-                    case 'time':
-                        // Time stop effect
-                        if (itemData.freezeAll) {
-                            console.log('TIME STOP ACTIVATED!');
-                            // Could implement time stop logic here
-                        }
-                        break;
+                    // Removed old debuff and time implementations - now handled in Fighter.applyItemEffect()
                         
                     case 'chaos':
                         // Random effect
@@ -3298,25 +4052,341 @@
                 showNotification(`${player.char.name} picked up:\n${itemData.emoji} ${itemData.name}!`);
             }
 
+            // FLAG CAPTURE MODE METHODS
+            initializeFlagCapture() {
+                gameState.flagCapture.flag = null;
+                gameState.flagCapture.flagHolder = null;
+                gameState.flagCapture.holdStartTime = 0;
+                gameState.flagCapture.flagDropped = false;
+                gameState.flagCapture.nextFlagDropTime = Date.now() + 1000; // Spawn flag after 1 second
+
+                // Reset stun states
+                gameState.flagCapture.stunned.player1 = false;
+                gameState.flagCapture.stunned.player2 = false;
+                gameState.flagCapture.stunned.player1StunTime = 0;
+                gameState.flagCapture.stunned.player2StunTime = 0;
+
+                console.log('🏁 Flag Capture Mode initialized!');
+            }
+
+            updateFlagCapture() {
+                try {
+                    const currentTime = Date.now();
+
+                    // Update stun states
+                    if (gameState.flagCapture.stunned.player1 && currentTime > gameState.flagCapture.stunned.player1StunTime) {
+                        gameState.flagCapture.stunned.player1 = false;
+                        console.log('Player 1 stun ended');
+                    }
+                    if (gameState.flagCapture.stunned.player2 && currentTime > gameState.flagCapture.stunned.player2StunTime) {
+                        gameState.flagCapture.stunned.player2 = false;
+                        console.log('Player 2 stun ended');
+                    }
+
+                    // Spawn flag ONLY if none exists and no one is holding it
+                    if (!gameState.flagCapture.flag && !gameState.flagCapture.flagHolder && currentTime >= gameState.flagCapture.nextFlagDropTime) {
+                        this.spawnFlag();
+                    }
+
+                    // Update flag physics
+                    if (gameState.flagCapture.flag && !gameState.flagCapture.flagHolder) {
+                        gameState.flagCapture.flag.update();
+
+                        // Check flag pickup
+                        if (gameState.flagCapture.flag.checkCollision(this.player1) && !gameState.flagCapture.stunned.player1) {
+                            this.pickupFlag('player1');
+                        } else if (gameState.flagCapture.flag.checkCollision(this.player2) && !gameState.flagCapture.stunned.player2) {
+                            this.pickupFlag('player2');
+                        }
+                    }
+
+                    // Check flag hold duration
+                    if (gameState.flagCapture.flagHolder) {
+                        const holdTime = currentTime - gameState.flagCapture.holdStartTime;
+                        if (holdTime >= gameState.flagCapture.holdDuration) {
+                            // Flag holder wins!
+                            this.endFlagCaptureGame(gameState.flagCapture.flagHolder);
+                        }
+                    }
+                } catch (error) {
+                    console.error('🏁 Error in updateFlagCapture:', error);
+                    // Reset flag capture state if there's an error
+                    gameState.flagCapture.flag = null;
+                    gameState.flagCapture.flagHolder = null;
+                }
+            }
+
+            spawnFlag() {
+                const x = Math.random() * (this.canvas.width - 100) + 50;
+                const y = 50; // Drop from top
+
+                gameState.flagCapture.flag = new Flag(x, y);
+                gameState.flagCapture.flagDropped = true;
+
+                console.log('🏁 Flag dropped at', x, y);
+                showNotification('🏁 FLAG DROPPED!\nFirst to hold for 15 seconds wins!');
+            }
+
+            pickupFlag(player) {
+                gameState.flagCapture.flagHolder = player;
+                gameState.flagCapture.holdStartTime = Date.now();
+                gameState.flagCapture.flag = null; // Remove flag from world
+
+                const playerName = player === 'player1' ? 'Player 1' : 'Player 2';
+                console.log(`${playerName} picked up the flag!`);
+                showNotification(`🏁 ${playerName} has the FLAG!\nHold for 15 seconds to win!`);
+            }
+
+            stealFlag(fromPlayer, toPlayer) {
+                // Transfer flag from one player to another
+                gameState.flagCapture.flagHolder = toPlayer;
+                gameState.flagCapture.holdStartTime = Date.now(); // Reset timer for new holder
+
+                const fromPlayerName = fromPlayer === 'player1' ? 'Player 1' : 'Player 2';
+                const toPlayerName = toPlayer === 'player1' ? 'Player 1' : 'Player 2';
+                console.log(`${toPlayerName} stole the flag from ${fromPlayerName}!`);
+                showNotification(`🏁 ${toPlayerName} STOLE the FLAG!\nHold for 15 seconds to win!`);
+            }
+
+            dropFlag(fromPlayer) {
+                if (!gameState.flagCapture.flagHolder) return;
+
+                const player = fromPlayer === 'player1' ? this.player1 : this.player2;
+
+                // Drop flag at player's position
+                gameState.flagCapture.flag = new Flag(player.x, player.y - 20);
+                gameState.flagCapture.flagHolder = null;
+                gameState.flagCapture.holdStartTime = 0;
+
+                const playerName = fromPlayer === 'player1' ? 'Player 1' : 'Player 2';
+                console.log(`${playerName} dropped the flag!`);
+                showNotification(`🏁 ${playerName} dropped the FLAG!`);
+            }
+
+            stunPlayer(player) {
+                const currentTime = Date.now();
+                if (player === 'player1') {
+                    gameState.flagCapture.stunned.player1 = true;
+                    gameState.flagCapture.stunned.player1StunTime = currentTime + gameState.flagCapture.stunned.stunDuration;
+                } else {
+                    gameState.flagCapture.stunned.player2 = true;
+                    gameState.flagCapture.stunned.player2StunTime = currentTime + gameState.flagCapture.stunned.stunDuration;
+                }
+
+                // Drop flag if stunned player was holding it
+                if (gameState.flagCapture.flagHolder === player) {
+                    this.dropFlag(player);
+                }
+
+                const playerName = player === 'player1' ? 'Player 1' : 'Player 2';
+                console.log(`${playerName} is stunned!`);
+                showNotification(`💫 ${playerName} is STUNNED!`);
+            }
+
+            endFlagCaptureGame(winner) {
+                this.gameRunning = false;
+                const winnerName = winner === 'player1' ? 'Player 1' : 'Player 2';
+
+                // Award coins and trophies based on flag capture victory
+                const timeRemainingSeconds = Math.ceil(this.timeLeft / 1000);
+                let player1Coins = 0, player2Coins = 0;
+                let player1Trophies = 0, player2Trophies = 0;
+
+                if (winner === 'player1') {
+                    player1Coins = 50; // 50 coins for flag capture victory
+                    player1Trophies = timeRemainingSeconds; // Trophies = time remaining in seconds
+                } else {
+                    player2Coins = 50; // 50 coins for flag capture victory
+                    player2Trophies = timeRemainingSeconds; // Trophies = time remaining in seconds
+                }
+
+                this.handleGameEnd(`🏁 ${winnerName} Wins!\nFlag Capture Victory!\n⏰ Time remaining: ${timeRemainingSeconds}s`, player1Coins, player2Coins, player1Trophies, player2Trophies);
+            }
+
             updateUI() {
                 const p1HealthPercent = (this.player1.health / this.player1.maxHealth) * 100;
                 const p2HealthPercent = (this.player2.health / this.player2.maxHealth) * 100;
-                
+
                 document.getElementById('player1Health').style.width = `${Math.max(0, p1HealthPercent)}%`;
                 document.getElementById('player2Health').style.width = `${Math.max(0, p2HealthPercent)}%`;
+
+                // Update flag capture status
+                if (this.isFlagCaptureMode) {
+                    let statusText = '';
+                    if (gameState.flagCapture.flagHolder) {
+                        const holderName = gameState.flagCapture.flagHolder === 'player1' ? 'Player 1' : 'Player 2';
+                        const currentTime = Date.now();
+                        const holdTime = currentTime - gameState.flagCapture.holdStartTime;
+                        const remainingTime = Math.max(0, gameState.flagCapture.holdDuration - holdTime);
+                        const seconds = Math.ceil(remainingTime / 1000);
+                        statusText = `🏁 ${holderName} has the flag! ${seconds}s to win!`;
+                    } else if (gameState.flagCapture.flag) {
+                        statusText = '🏁 Flag is available! First to hold for 15s wins!';
+                    } else {
+                        statusText = '🏁 Flag will drop soon...';
+                    }
+
+                    // Update or create flag status element
+                    let flagStatus = document.getElementById('flagStatus');
+                    if (!flagStatus) {
+                        flagStatus = document.createElement('div');
+                        flagStatus.id = 'flagStatus';
+                        flagStatus.style.cssText = `
+                            position: fixed;
+                            top: 10px;
+                            left: 50%;
+                            transform: translateX(-50%);
+                            background: rgba(0, 0, 0, 0.8);
+                            color: white;
+                            padding: 10px 20px;
+                            border-radius: 10px;
+                            font-size: 16px;
+                            font-weight: bold;
+                            z-index: 1000;
+                            text-align: center;
+                        `;
+                        document.body.appendChild(flagStatus);
+                    }
+                    flagStatus.textContent = statusText;
+                } else {
+                    // Remove flag status if not in flag capture mode
+                    const flagStatus = document.getElementById('flagStatus');
+                    if (flagStatus) {
+                        flagStatus.remove();
+                    }
+                }
+            }
+
+            endBossBattle(playersWin) {
+                this.gameRunning = false;
+
+                if (playersWin) {
+                    // Players defeated the boss!
+                    console.log('🎉 Players defeated the boss!');
+                    showNotification('🎉 BOSS DEFEATED! VICTORY!');
+
+                    // Reward both players
+                    const baseReward = 200; // Large coin reward for defeating boss
+                    const bossPhaseBonus = (this.boss ? this.boss.phase : 1) * 50; // Bonus based on how far boss got
+                    const timeBonus = Math.max(0, Math.ceil(this.timeLeft / 1000)); // Coins = seconds remaining
+                    const totalReward = baseReward + bossPhaseBonus + timeBonus;
+
+                    // Award coins to both players
+                    if (gameState.gameMode === 'multiplayer') {
+                        gameState.player1Coins += totalReward;
+                        gameState.player2Coins += totalReward;
+                        console.log(`💰 Both players earn ${totalReward} coins!`);
+                    } else {
+                        gameState.coins += totalReward;
+                        console.log(`💰 Player earns ${totalReward} coins!`);
+                    }
+
+                    // Award trophies based on remaining HP
+                    const player1HP = Math.max(0, Math.floor(this.player1.health));
+                    const player2HP = Math.max(0, Math.floor(this.player2.health));
+                    const totalHP = player1HP + player2HP;
+                    const trophyReward = Math.floor(totalHP / 10); // 1 trophy per 10 HP remaining
+
+                    if (gameState.gameMode === 'multiplayer') {
+                        gameState.player1Trophies += trophyReward;
+                        gameState.player2Trophies += trophyReward;
+                    } else {
+                        gameState.trophies += trophyReward;
+                    }
+
+                    // Show victory screen
+                    setTimeout(() => {
+                        alert(`🎉 BOSS DEFEATED!\n\n💰 Base Reward: ${baseReward}\n🎯 Phase Bonus: ${bossPhaseBonus}\n⏰ Time Bonus: ${timeBonus}\n💰 Total Coins: ${totalReward}\n🏆 Trophies Earned: ${trophyReward}\n\nCongratulations on your teamwork!`);
+                        endBattle();
+                    }, 2000);
+
+                } else {
+                    // Boss defeated the players
+                    console.log('💀 Boss defeated the players!');
+                    showNotification('💀 BOSS VICTORY! DEFEAT!');
+
+                    // Small penalty for losing
+                    const penalty = 25;
+                    if (gameState.gameMode === 'multiplayer') {
+                        gameState.player1Coins = Math.max(0, gameState.player1Coins - penalty);
+                        gameState.player2Coins = Math.max(0, gameState.player2Coins - penalty);
+                    } else {
+                        gameState.coins = Math.max(0, gameState.coins - penalty);
+                    }
+
+                    setTimeout(() => {
+                        alert(`💀 BOSS VICTORY!\n\n💸 Coins Lost: ${penalty}\n\nBetter luck next time!`);
+                        endBattle();
+                    }, 2000);
+                }
             }
 
             endGame() {
+                // BOSS BATTLE MODE - Special handling for player deaths
+                if (this.isBossBattleMode) {
+                    const player1Dead = this.player1.health <= 0;
+                    const player2Dead = this.player2.health <= 0;
+
+                    if (player1Dead && player2Dead) {
+                        // Both players died - boss wins
+                        this.gameRunning = false;
+                        this.endBossBattle(false);
+                        return;
+                    } else if (player1Dead || player2Dead) {
+                        // One player died - continue with remaining player
+                        console.log('One player down, but the fight continues!');
+                        showNotification('💀 TEAMMATE DOWN! FIGHT ON!');
+                        return; // Don't end the game yet - keep running!
+                    }
+                    // If we reach here, time ran out but players are alive - boss wins by timeout
+                    this.gameRunning = false;
+                    this.endBossBattle(false);
+                    return;
+                }
+
+                // Normal game modes - stop the game
                 this.gameRunning = false;
-                
+
                 let winner;
                 let player1HP = Math.max(0, Math.floor(this.player1.health));
                 let player2HP = Math.max(0, Math.floor(this.player2.health));
-                
-                // Calculate coins as HP difference
+
+                // FLAG CAPTURE MODE - Special death penalty handling
+                if (this.isFlagCaptureMode) {
+                    let player1Coins = 0, player2Coins = 0;
+                    let player1Trophies = 0, player2Trophies = 0;
+
+                    if (this.player1.health <= 0) {
+                        // Player 1 died - loses 25 coins
+                        player1Coins = -25;
+                        winner = 'Player 2 Wins!\nPlayer 1 died in flag capture!';
+                        player2Trophies = Math.ceil(this.timeLeft / 1000); // Winner gets time remaining as trophies
+                    } else if (this.player2.health <= 0) {
+                        // Player 2 died - loses 25 coins (in single player, this affects AI but we track it)
+                        player2Coins = -25;
+                        winner = 'Player 1 Wins!\nPlayer 2 died in flag capture!';
+                        player1Trophies = Math.ceil(this.timeLeft / 1000); // Winner gets time remaining as trophies
+                    } else if (this.timeLeft <= 0) {
+                        // Time up in flag capture mode
+                        if (this.player1.health > this.player2.health) {
+                            winner = 'Time Up - Player 1 Wins!';
+                            player1Trophies = 1;
+                        } else if (this.player2.health > this.player1.health) {
+                            winner = 'Time Up - Player 2 Wins!';
+                            player2Trophies = 1;
+                        } else {
+                            winner = 'Time Up - Draw!';
+                        }
+                    }
+
+                    this.handleGameEnd(winner, player1Coins, player2Coins, player1Trophies, player2Trophies);
+                    return;
+                }
+
+                // NORMAL MODE - Calculate coins as HP difference
                 let player1Coins = Math.max(0, player1HP - player2HP);
                 let player2Coins = Math.max(0, player2HP - player1HP);
-                
+
                 // TROPHY SYSTEM - Calculate trophies based on time remaining!
                 const timeRemainingSeconds = Math.ceil(this.timeLeft / 1000);
                 let player1Trophies = 0;
@@ -3350,6 +4420,18 @@
                     } else {
                         player2Coins = 0; // No coins if you lose
                     }
+                }
+
+                // TOURNAMENT MODE HANDLING
+                if (gameState.tournamentMode && gameState.tournamentData.isActive) {
+                    this.handleTournamentResult(winner);
+                    return;
+                }
+
+                // 2-PLAYER TOURNAMENT MODE HANDLING
+                if (gameState.tournament2PlayerMode && gameState.tournament2PlayerData.isActive) {
+                    this.handle2PlayerTournamentResult(winner);
+                    return;
                 }
 
                 // Award coins and trophies
@@ -3400,12 +4482,316 @@
                 setTimeout(() => endBattle(), 5000);
             }
 
+            handleGameEnd(winner, player1Coins, player2Coins, player1Trophies, player2Trophies) {
+                this.gameRunning = false;
+
+                // Award coins and trophies
+                if (gameState.gameMode === 'multiplayer') {
+                    // Multiplayer mode
+                    gameState.player1Coins = Math.max(0, gameState.player1Coins + player1Coins); // Prevent negative coins
+                    gameState.player2Coins = Math.max(0, gameState.player2Coins + player2Coins);
+                    gameState.player1Trophies += player1Trophies;
+                    gameState.player2Trophies += player2Trophies;
+
+                    // Format coin messages to show gains/losses
+                    const p1CoinMsg = player1Coins >= 0 ? `+${player1Coins}` : `${player1Coins}`;
+                    const p2CoinMsg = player2Coins >= 0 ? `+${player2Coins}` : `${player2Coins}`;
+                    const coinsMessage = `P1: ${p1CoinMsg} coins | P2: ${p2CoinMsg} coins`;
+                    const trophyMessage = `🏆 P1: +${player1Trophies} | P2: +${player2Trophies} trophies`;
+
+                    updateMultiplayerCoinsDisplay();
+                    updateMultiplayerTrophyDisplay();
+
+                    showNotification(`${winner}\n${coinsMessage}\n${trophyMessage}`);
+                } else {
+                    // Single player mode
+                    gameState.coins = Math.max(0, gameState.coins + player1Coins); // Prevent negative coins
+                    gameState.trophies += player1Trophies;
+
+                    // Format coin message to show gains/losses
+                    const coinMsg = player1Coins >= 0 ? `+${player1Coins} coins earned!` : `${player1Coins} coins lost!`;
+                    const trophyMessage = `🏆 +${player1Trophies} trophies earned!`;
+
+                    updateSinglePlayerCoinsDisplay();
+                    updateSinglePlayerTrophyDisplay();
+
+                    showNotification(`${winner}\n${coinMsg}\n${trophyMessage}`);
+                }
+
+                setTimeout(() => endBattle(), 5000);
+            }
+
+            handleTournamentResult(winner) {
+                const data = gameState.tournamentData;
+                const currentRoundName = data.roundNames[data.currentRound];
+                const series = data.currentSeries;
+
+                // Update series score
+                if (winner.includes('Player 1')) {
+                    series.playerWins++;
+                } else {
+                    series.opponentWins++;
+                }
+                series.gamesPlayed++;
+
+                // Check if series is complete (first to 3 wins)
+                if (series.playerWins >= data.seriesLength) {
+                    // Player won the series - advance to next round
+                    data.roundsWon++;
+                    data.currentRound++;
+
+                    // Reset series for next round
+                    series.playerWins = 0;
+                    series.opponentWins = 0;
+                    series.gamesPlayed = 0;
+                    series.playerCharacter = null;
+                    series.opponentCharacter = null;
+
+                    if (data.currentRound >= data.totalRounds) {
+                        // Tournament completed! Award prize
+                        if (gameState.gameMode === 'multiplayer') {
+                            if (gameState.currentShopPlayer === 1) {
+                                gameState.player1Coins += data.prizePool;
+                            } else {
+                                gameState.player2Coins += data.prizePool;
+                            }
+                            updateMultiplayerCoinsDisplay();
+                        } else {
+                            gameState.coins += data.prizePool;
+                            updateSinglePlayerCoinsDisplay();
+                        }
+
+                        // Reset tournament
+                        gameState.tournamentMode = false;
+                        gameState.tournamentData.isActive = false;
+
+                        showNotification(`🏆 TOURNAMENT CHAMPION! 🏆\n${data.name} COMPLETED!\n\n💰 Prize Pool Awarded: ${data.prizePool} coins!\n🎉 Congratulations on your victory!`);
+                        setTimeout(() => {
+                            endBattle();
+                            updateTournamentStatus();
+                        }, 6000);
+                    } else {
+                        // Advance to next round
+                        const nextRoundName = data.roundNames[data.currentRound];
+                        showNotification(`🏆 ${currentRoundName} SERIES WON! 🏆\n\nAdvancing to: ${nextRoundName}\nRounds Won: ${data.roundsWon}/${data.totalRounds}\n\nPrize Pool: ${data.prizePool} coins\n(Only awarded if you win ALL rounds!)`);
+                        setTimeout(() => {
+                            endBattle();
+                            updateTournamentStatus();
+                            // Auto-continue to next round
+                            setTimeout(() => {
+                                showCharacterSelect();
+                            }, 2000);
+                        }, 4000);
+                    }
+                } else if (series.opponentWins >= data.seriesLength) {
+                    // Player lost the series - tournament over
+                    gameState.tournamentMode = false;
+                    gameState.tournamentData.isActive = false;
+
+                    showNotification(`💀 TOURNAMENT ELIMINATED! 💀\n\nLost series in: ${currentRoundName}\nFinal Series Score: ${series.playerWins}-${series.opponentWins}\nRounds Won: ${data.roundsWon}/${data.totalRounds}\n\n❌ No prize awarded\n💰 Entry fee (${data.entryFee} coins) lost\n\nBetter luck next time!`);
+                    setTimeout(() => {
+                        endBattle();
+                        updateTournamentStatus();
+                    }, 6000);
+                } else {
+                    // Series continues - show current score and continue
+                    const seriesStatus = winner.includes('Player 1') ? 'GAME WON!' : 'GAME LOST!';
+                    showNotification(`${seriesStatus}\n\n${currentRoundName} Series Score:\nYou: ${series.playerWins} | Opponent: ${series.opponentWins}\n\nFirst to ${data.seriesLength} wins advances!\n\nNext game starting...`);
+                    setTimeout(() => {
+                        endBattle();
+                        updateTournamentStatus();
+                        // Continue series - auto-start next game
+                        setTimeout(() => {
+                            showCharacterSelect();
+                        }, 2000);
+                    }, 3000);
+                }
+
+                updateUniversalCoinsDisplay();
+            }
+
+            handle2PlayerTournamentResult(winner) {
+                const data = gameState.tournament2PlayerData;
+                const currentPlayerData = data.currentPlayer === 1 ? data.player1 : data.player2;
+                const series = currentPlayerData.currentSeries;
+                const currentRoundName = data.roundNames[data.currentRound];
+
+                // Handle final match (Player vs Player)
+                if (data.finalMatch) {
+                    if (winner.includes('Player 1')) {
+                        end2PlayerTournament(1);
+                    } else {
+                        end2PlayerTournament(2);
+                    }
+                    return;
+                }
+
+                // Update series score for current player
+                if (winner.includes('Player 1')) {
+                    series.playerWins++;
+                } else {
+                    series.opponentWins++;
+                }
+                series.gamesPlayed++;
+
+                // Check if series is complete (first to 3 wins)
+                if (series.playerWins >= data.seriesLength) {
+                    // Current player won the series - advance to next round
+                    currentPlayerData.roundsWon++;
+
+                    // Reset series for next round
+                    series.playerWins = 0;
+                    series.opponentWins = 0;
+                    series.gamesPlayed = 0;
+                    series.playerCharacter = null;
+                    series.opponentCharacter = null;
+
+                    if (currentPlayerData.roundsWon >= data.totalRounds) {
+                        // Player completed all rounds - check if other player also completed
+                        const otherPlayerData = data.currentPlayer === 1 ? data.player2 : data.player1;
+                        if (otherPlayerData.roundsWon >= data.totalRounds) {
+                            // Both players made it to finals
+                            showNotification(`🏆 Player ${data.currentPlayer} ADVANCES TO FINALS! 🏆\n\n${currentRoundName} series won!\nBoth players will meet in the finals!`);
+                        } else {
+                            // Current player finished, wait for other player
+                            showNotification(`🏆 Player ${data.currentPlayer} COMPLETED TOURNAMENT! 🏆\n\nWaiting for Player ${data.currentPlayer === 1 ? 2 : 1} to finish...`);
+                        }
+                    } else {
+                        // Advance to next round
+                        const nextRoundName = data.roundNames[currentPlayerData.roundsWon];
+                        showNotification(`🏆 Player ${data.currentPlayer} ADVANCES! 🏆\n\n${currentRoundName} series won!\nAdvancing to: ${nextRoundName}\n\nPlayer ${data.currentPlayer === 1 ? 2 : 1}'s turn next!`);
+                    }
+
+                    setTimeout(() => {
+                        endBattle();
+                        update2PlayerTournamentStatus();
+                        setTimeout(() => {
+                            switchTo2PlayerNextPlayer();
+                        }, 2000);
+                    }, 4000);
+
+                } else if (series.opponentWins >= data.seriesLength) {
+                    // Current player lost the series - eliminated
+                    currentPlayerData.isEliminated = true;
+
+                    showNotification(`💀 Player ${data.currentPlayer} ELIMINATED! 💀\n\nLost series in: ${currentRoundName}\nFinal Series Score: ${series.playerWins}-${series.opponentWins}\n\nPlayer ${data.currentPlayer === 1 ? 2 : 1} continues alone!`);
+
+                    setTimeout(() => {
+                        endBattle();
+                        update2PlayerTournamentStatus();
+                        setTimeout(() => {
+                            switchTo2PlayerNextPlayer();
+                        }, 2000);
+                    }, 4000);
+
+                } else {
+                    // Series continues - show current score and continue
+                    const seriesStatus = winner.includes('Player 1') ? 'GAME WON!' : 'GAME LOST!';
+                    showNotification(`Player ${data.currentPlayer}: ${seriesStatus}\n\n${currentRoundName} Series Score:\nYou: ${series.playerWins} | Opponent: ${series.opponentWins}\n\nFirst to ${data.seriesLength} wins advances!\n\nNext game starting...`);
+
+                    setTimeout(() => {
+                        endBattle();
+                        update2PlayerTournamentStatus();
+                        setTimeout(() => {
+                            showCharacterSelect();
+                        }, 2000);
+                    }, 3000);
+                }
+
+                updateUniversalCoinsDisplay();
+            }
+
             // ADVANCED AI SYSTEM with smart pathfinding, item prioritization, and tactical intelligence!
             updateAI() {
                 const dx = this.player1.x - this.player2.x;
                 const dy = this.player1.y - this.player2.y;
                 const distance = Math.abs(dx);
                 const verticalDistance = Math.abs(dy);
+
+                // FLAG CAPTURE MODE AI - Prioritize flag-related actions!
+                if (this.isFlagCaptureMode) {
+                    // If player has the flag, chase them aggressively!
+                    if (gameState.flagCapture.flagHolder === 'player1') {
+                        // AI chasing flag holder
+
+                        // Move towards player aggressively
+                        if (dx > 20) {
+                            this.player2.x += this.player2.getMovementSpeed() * 1.2; // 20% faster when chasing flag
+                            this.player2.direction = 1;
+                        } else if (dx < -20) {
+                            this.player2.x -= this.player2.getMovementSpeed() * 1.2;
+                            this.player2.direction = -1;
+                        }
+
+                        // Jump to reach player if they're above
+                        if (dy < -50 && this.player2.onGround) {
+                            this.player2.jump();
+                        }
+
+                        // Attack if close enough to steal flag
+                        if (distance < 80) {
+                            if (Math.random() < 0.8) { // 80% chance to attack when close
+                                this.player2.normalAttack();
+                            }
+                        }
+
+                        // Use special attack if close enough to stun
+                        if (distance < 100 && Math.random() < 0.3) { // 30% chance for special attack
+                            this.player2.specialAttack();
+                        }
+
+                        return; // Skip normal AI behavior when chasing flag holder
+                    }
+
+                    // If AI has the flag, try to avoid player
+                    if (gameState.flagCapture.flagHolder === 'player2') {
+                        // AI avoiding player while holding flag
+
+                        // Move away from player
+                        if (dx > 0) {
+                            this.player2.x -= this.player2.getMovementSpeed() * 1.1; // 10% faster when fleeing
+                            this.player2.direction = -1;
+                        } else {
+                            this.player2.x += this.player2.getMovementSpeed() * 1.1;
+                            this.player2.direction = 1;
+                        }
+
+                        // Jump to escape if player is close
+                        if (distance < 100 && this.player2.onGround) {
+                            this.player2.jump();
+                        }
+
+                        return; // Skip normal AI behavior when holding flag
+                    }
+
+                    // If flag is available, go for it!
+                    if (gameState.flagCapture.flag && !gameState.flagCapture.flagHolder) {
+                        const flagDx = gameState.flagCapture.flag.x - this.player2.x;
+                        const flagDistance = Math.abs(flagDx);
+
+                        // AI going for flag
+
+                        // Move towards flag
+                        if (flagDx > 20) {
+                            this.player2.x += this.player2.getMovementSpeed();
+                            this.player2.direction = 1;
+                        } else if (flagDx < -20) {
+                            this.player2.x -= this.player2.getMovementSpeed();
+                            this.player2.direction = -1;
+                        }
+
+                        // Jump to reach flag if needed
+                        const flagDy = gameState.flagCapture.flag.y - this.player2.y;
+                        if (flagDy < -30 && this.player2.onGround) {
+                            this.player2.jump();
+                        }
+
+                        // If close to flag, prioritize it over attacking player
+                        if (flagDistance < 150) {
+                            return; // Skip normal AI behavior when close to flag
+                        }
+                    }
+                }
 
                 // IMMEDIATE PATHFINDING - Find best path to player and execute it
                 const pathResult = this.findOptimalPathToPlayer();
@@ -4348,19 +5734,33 @@
                     }
                 });
 
-                // Apply item speed bonuses
+                // Apply item speed bonuses and check for frozen status
                 if (this.activeEffects && this.activeEffects.length > 0) {
                     this.activeEffects.forEach(effect => {
                         if (effect.type === 'speedBoost') {
                             speedBonus += (effect.data.multiplier - 1) * baseSpeed;
+                        } else if (effect.type === 'frozen') {
+                            // Frozen characters cannot move
+                            return 0;
                         }
                     });
+                }
+
+                // Check if frozen - return 0 speed if frozen
+                const isFrozen = this.activeEffects && this.activeEffects.some(effect => effect.type === 'frozen');
+                if (isFrozen) {
+                    return 0; // Cannot move when frozen
                 }
 
                 return Math.max(1, baseSpeed + speedBonus); // Minimum speed of 1
             }
 
             update() {
+                // Don't update if dead (in boss battle mode, dead players should not move)
+                if (this.health <= 0) {
+                    return;
+                }
+
                 // Check if character is moving for animation
                 this.isMoving = Math.abs(this.x - this.lastX) > 0.1;
                 if (this.isMoving && this.onGround) {
@@ -4481,6 +5881,12 @@
             }
 
             jump() {
+                // Check if frozen - cannot jump when frozen
+                const isFrozen = this.activeEffects && this.activeEffects.some(effect => effect.type === 'frozen');
+                if (isFrozen) {
+                    return; // Cannot jump when frozen
+                }
+
                 if (this.onGround) {
                     this.velocityY = this.jumpPower;
                     this.onGround = false;
@@ -4488,6 +5894,12 @@
             }
 
             draw(ctx) {
+                // Don't draw if dead (in boss battle mode, show dead players as transparent)
+                if (this.health <= 0) {
+                    // Draw dead player as semi-transparent
+                    ctx.globalAlpha = 0.3;
+                }
+
                 const centerX = this.x + this.width / 2;
                 const centerY = this.y + this.height / 2;
                 
@@ -4567,6 +5979,14 @@
                         case 'poisoned':
                             icon = '☢️';
                             color = '#44FF44';
+                            break;
+                        case 'frozen':
+                            icon = '❄️';
+                            color = '#00FFFF';
+                            break;
+                        case 'teleport':
+                            icon = '🌀';
+                            color = '#9932CC';
                             break;
                         case 'timeStop':
                             icon = '⏰';
@@ -4788,6 +6208,20 @@
                     ctx.fillText(this.char.emoji, centerX, centerY - 15);
                     ctx.textAlign = 'left';
                 }
+
+                // FLAG CAPTURE MODE - Draw flag in hand if holding it
+                if (gameState.battle && gameState.battle.isFlagCaptureMode) {
+                    const playerName = this === gameState.battle.player1 ? 'player1' : 'player2';
+                    if (gameState.flagCapture.flagHolder === playerName) {
+                        // Draw flag in player's hand
+                        ctx.font = '25px Arial';
+                        ctx.textAlign = 'center';
+                        const flagX = centerX + (this.direction > 0 ? 25 : -25); // Flag in front of player
+                        const flagY = centerY + 5; // Slightly below center
+                        ctx.fillText('🏁', flagX, flagY);
+                        ctx.textAlign = 'left';
+                    }
+                }
             }
 
             drawHealthAndBars(ctx, centerX, centerY) {
@@ -4829,6 +6263,9 @@
                 }
                 
                 // No special attack info displayed at bottom - only circle shows status
+
+                // Reset alpha if it was changed for dead players
+                ctx.globalAlpha = 1.0;
             }
 
             calculateActualDamage(baseDamage, attackType = 'normal') {
@@ -4949,6 +6386,25 @@
             normalAttack() {
                 if (!this.canAttack) return;
 
+                // Don't attack if dead
+                if (this.health <= 0) return;
+
+                // Check if frozen - cannot attack when frozen
+                const isFrozen = this.activeEffects && this.activeEffects.some(effect => effect.type === 'frozen');
+                if (isFrozen) {
+                    console.log(`${this.char.name} cannot attack while frozen!`);
+                    return;
+                }
+
+                // FLAG CAPTURE MODE - Cannot attack while holding flag
+                if (gameState.battle && gameState.battle.isFlagCaptureMode) {
+                    const playerName = this === gameState.battle.player1 ? 'player1' : 'player2';
+                    if (gameState.flagCapture.flagHolder === playerName) {
+                        console.log(`${this.char.name} cannot attack while holding the flag!`);
+                        return;
+                    }
+                }
+
                 // Calculate actual damage including item effects
                 const baseDamage = this.char.damage;
                 const actualDamage = this.calculateActualDamage(baseDamage, 'normal');
@@ -5014,6 +6470,25 @@
                 if (!this.canSpecialAttack) return;
                 if (this.headFlying) return; // Prevent multiple head projectiles
 
+                // Don't attack if dead
+                if (this.health <= 0) return;
+
+                // Check if frozen - cannot attack when frozen
+                const isFrozen = this.activeEffects && this.activeEffects.some(effect => effect.type === 'frozen');
+                if (isFrozen) {
+                    console.log(`${this.char.name} cannot special attack while frozen!`);
+                    return;
+                }
+
+                // FLAG CAPTURE MODE - Cannot attack while holding flag
+                if (gameState.battle && gameState.battle.isFlagCaptureMode) {
+                    const playerName = this === gameState.battle.player1 ? 'player1' : 'player2';
+                    if (gameState.flagCapture.flagHolder === playerName) {
+                        console.log(`${this.char.name} cannot special attack while holding the flag!`);
+                        return;
+                    }
+                }
+
                 // HEAD EMOJI SPECIAL ATTACK! - The head flies off as a spinning projectile
                 this.headFlying = true; // Flag to hide head emoji while it's flying
 
@@ -5055,7 +6530,7 @@
                 console.log(`${this.char.name} HEAD SPECIAL ATTACK: ${actualDamage} damage (base: ${baseDamage}) - HEAD FLIES OFF!`);
             }
 
-            takeDamage(incomingDamage) {
+            takeDamage(incomingDamage, attacker = null) {
                 let finalDamage = incomingDamage;
                 let flatReduction = 0;
                 let percentageReduction = 0;
@@ -5149,7 +6624,18 @@
                 // 4. LIFESTEAL CALCULATION (for the attacker)
                 // Note: This would need to be called from the attacker's side, but we'll track it here for logging
 
-                // 5. APPLY FINAL DAMAGE
+                // 5. FLAG CAPTURE MODE - Handle flag stealing
+                if (gameState.battle && gameState.battle.isFlagCaptureMode && !dodged && attacker) {
+                    const attackedPlayer = this === gameState.battle.player1 ? 'player1' : 'player2';
+                    const attackingPlayer = attacker === gameState.battle.player1 ? 'player1' : 'player2';
+
+                    // If this player has the flag, steal it to the attacker
+                    if (gameState.flagCapture.flagHolder === attackedPlayer) {
+                        gameState.battle.stealFlag(attackedPlayer, attackingPlayer);
+                    }
+                }
+
+                // 6. APPLY FINAL DAMAGE
                 this.health = Math.max(0, this.health - finalDamage);
 
                 // 6. ADD VISUAL EFFECTS
@@ -5305,7 +6791,7 @@
                         
                     case 'debuff':
                         const target = this === gameState.battle.player1 ? gameState.battle.player2 : gameState.battle.player1;
-                        
+
                         // Freeze enemy
                         if (itemData.freezeDuration) {
                             target.addTimedEffect('frozen', {
@@ -5313,6 +6799,17 @@
                                 name: itemData.name
                             });
                             console.log(`❄️ ${target.char.name} is FROZEN for ${itemData.freezeDuration/1000} seconds!`);
+                        }
+
+                        // Poison enemy
+                        if (itemData.poisonDamage && itemData.poisonDuration) {
+                            target.addTimedEffect('poisoned', {
+                                tickDamage: itemData.poisonDamage,
+                                duration: itemData.poisonDuration,
+                                name: itemData.name,
+                                lastTick: Date.now()
+                            });
+                            console.log(`☠️ ${target.char.name} is POISONED! Taking ${itemData.poisonDamage} damage/sec for ${itemData.poisonDuration/1000}s!`);
                         }
                         break;
                         
@@ -5380,7 +6877,7 @@
                                 { type: 'enemy_damage', amount: 60 }
                             ];
                             const randomEffect = chaosEffects[Math.floor(Math.random() * chaosEffects.length)];
-                            
+
                             switch(randomEffect.type) {
                                 case 'heal':
                                     this.health = Math.min(this.maxHealth, this.health + randomEffect.amount);
@@ -5410,7 +6907,60 @@
                             }
                         }
                         break;
-                        
+
+                    case 'dimensional':
+                        // Space Rift - teleport ability
+                        if (itemData.teleport) {
+                            this.addTimedEffect('teleport', {
+                                duration: itemData.duration || 10000,
+                                name: itemData.name
+                            });
+                            console.log(`🌀 ${this.char.name} gains teleport ability!`);
+                        }
+                        break;
+
+                    case 'fate':
+                        // Destiny - small chance for instant victory
+                        if (itemData.guaranteedWin && Math.random() < itemData.guaranteedWin) {
+                            const enemy = this === gameState.battle.player1 ? gameState.battle.player2 : gameState.battle.player1;
+                            enemy.health = 0;
+                            console.log(`✨ DESTINY ACTIVATED! ${enemy.char.name} is defeated by fate!`);
+                        } else {
+                            // If destiny doesn't trigger, give a powerful damage boost
+                            this.addTimedEffect('damageBoost', {
+                                amount: 100,
+                                duration: itemData.duration || 10000,
+                                name: itemData.name
+                            });
+                            console.log(`✨ Destiny grants +100 damage boost!`);
+                        }
+                        break;
+
+                    case 'infinite':
+                        // Infinity Stone - ALL POWERS
+                        if (itemData.allPowers) {
+                            this.addTimedEffect('damageBoost', { amount: 150, duration: itemData.duration || 15000, name: 'Infinity Damage' });
+                            this.addTimedEffect('speedBoost', { multiplier: 3, duration: itemData.duration || 15000, name: 'Infinity Speed' });
+                            this.addTimedEffect('defenseBoost', { amount: 50, duration: itemData.duration || 15000, name: 'Infinity Defense' });
+                            this.health = this.maxHealth; // Full heal
+                            console.log(`♾️ INFINITY STONE ACTIVATED! ALL POWERS GRANTED!`);
+                        }
+                        break;
+
+                    case 'wave':
+                        // Tsunami - wave damage
+                        const waveTarget = this === gameState.battle.player1 ? gameState.battle.player2 : gameState.battle.player1;
+                        waveTarget.takeDamage(itemData.damage || 90);
+                        console.log(`🌊 TSUNAMI WAVE hits ${waveTarget.char.name} for ${itemData.damage || 90} damage!`);
+                        break;
+
+                    case 'global':
+                        // Earthquake - global damage
+                        const globalTarget = this === gameState.battle.player1 ? gameState.battle.player2 : gameState.battle.player1;
+                        globalTarget.takeDamage(itemData.damage || 80);
+                        console.log(`🌍 EARTHQUAKE strikes ${globalTarget.char.name} for ${itemData.damage || 80} damage!`);
+                        break;
+
                     default:
                         console.log(`Unknown item type: ${itemData.type}`);
                         break;
@@ -5418,6 +6968,37 @@
                 
                 // Show visual notification
                 showNotification(`${this.char.name} used:\n${itemData.emoji} ${itemData.name}!\n${this.getEffectDescription(itemData)}`);
+            }
+
+            tryTeleport() {
+                // Check if player has teleport ability
+                const hasTeleport = this.activeEffects && this.activeEffects.some(effect => effect.type === 'teleport');
+                if (!hasTeleport) {
+                    console.log(`${this.char.name} has no teleport ability!`);
+                    return;
+                }
+
+                // Get the enemy player
+                const enemy = this === gameState.battle.player1 ? gameState.battle.player2 : gameState.battle.player1;
+
+                // Teleport near the enemy (but not exactly on them)
+                const teleportDistance = 100; // Distance from enemy
+                const direction = Math.random() < 0.5 ? -1 : 1; // Random side
+
+                this.x = enemy.x + (direction * teleportDistance);
+                this.y = enemy.y; // Same height
+
+                // Make sure teleport position is within bounds
+                this.x = Math.max(50, Math.min(window.innerWidth - 50, this.x));
+
+                console.log(`🌀 ${this.char.name} teleports near ${enemy.char.name}!`);
+                showNotification(`🌀 ${this.char.name} TELEPORTED!`);
+
+                // Remove one use of teleport effect (reduce duration)
+                const teleportEffect = this.activeEffects.find(effect => effect.type === 'teleport');
+                if (teleportEffect) {
+                    teleportEffect.timeLeft -= 2000; // Reduce by 2 seconds per use
+                }
             }
 
             addTimedEffect(effectType, effectData) {
@@ -5560,6 +7141,90 @@
             }
         }
 
+        // FLAG CLASS
+        class Flag {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 40;
+                this.height = 40;
+                this.velocityY = 0;
+                this.gravity = 0.8;
+                this.onGround = false;
+                this.bounceCount = 0;
+                this.maxBounces = 3;
+                this.emoji = '🏁';
+                this.glowIntensity = 0;
+                this.glowDirection = 1;
+            }
+
+            update() {
+                // Apply gravity if not on ground
+                if (!this.onGround) {
+                    this.velocityY += this.gravity;
+                    this.y += this.velocityY;
+                }
+
+                // Check ground collision
+                const groundLevel = window.innerHeight - 100; // Use window height as ground level
+                if (this.y >= groundLevel && !this.onGround) {
+                    this.y = groundLevel;
+                    if (this.bounceCount < this.maxBounces) {
+                        this.velocityY = -this.velocityY * 0.6; // Bounce with energy loss
+                        this.bounceCount++;
+                    } else {
+                        this.velocityY = 0;
+                        this.onGround = true;
+                    }
+                }
+
+                // Update glow effect
+                this.glowIntensity += this.glowDirection * 0.05;
+                if (this.glowIntensity >= 1) {
+                    this.glowIntensity = 1;
+                    this.glowDirection = -1;
+                } else if (this.glowIntensity <= 0) {
+                    this.glowIntensity = 0;
+                    this.glowDirection = 1;
+                }
+            }
+
+            render(ctx) {
+                // Draw glow effect
+                ctx.save();
+                ctx.shadowColor = '#FFD700';
+                ctx.shadowBlur = 20 + (this.glowIntensity * 20);
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+
+                // Draw flag emoji - make it bigger and more visible
+                ctx.font = `${Math.max(40, this.width)}px Arial`;
+                ctx.fillStyle = '#FFFFFF'; // White color for visibility
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.emoji, this.x + this.width/2, this.y + this.height/2);
+
+                ctx.restore();
+
+                // Draw flag pole
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(this.x + this.width/2, this.y + this.height);
+                ctx.lineTo(this.x + this.width/2, this.y + this.height + 20);
+                ctx.stroke();
+
+                // Debug rectangle removed - flag should be visible now
+            }
+
+            checkCollision(fighter) {
+                return fighter.x < this.x + this.width &&
+                       fighter.x + fighter.width > this.x &&
+                       fighter.y < this.y + this.height &&
+                       fighter.y + fighter.height > this.y;
+            }
+        }
+
         // Projectile classes
         class Projectile {
             constructor(x, y, velocity, damage, color, owner) {
@@ -5697,6 +7362,16 @@
 
             // Override collision to immediately restore head
             onHit() {
+                // FLAG CAPTURE MODE - Special attack stuns the target
+                if (gameState.battle && gameState.battle.isFlagCaptureMode) {
+                    // Determine which player was hit
+                    const target = this.owner === gameState.battle.player1 ? gameState.battle.player2 : gameState.battle.player1;
+                    const targetPlayer = target === gameState.battle.player1 ? 'player1' : 'player2';
+
+                    // Stun the target
+                    gameState.battle.stunPlayer(targetPlayer);
+                }
+
                 // Head disappears immediately after hit and restores to owner
                 this.owner.headFlying = false;
                 this.shouldBeRemoved = true;
@@ -5753,6 +7428,9 @@
 
             // Initialize universal coin display
             updateUniversalCoinsDisplay();
+
+            // Update battle mode display for the selected game mode
+            updateBattleModeDisplay();
 
             showMainMenu();
         }
@@ -6438,6 +8116,44 @@
         }
 
         function showCharacterSelect() {
+            // In tournament mode, check if characters are already locked for the series
+            if (gameState.tournamentMode && gameState.tournamentData.isActive) {
+                const series = gameState.tournamentData.currentSeries;
+
+                // If characters are already locked for this series, skip character selection
+                if (series.playerCharacter && series.opponentCharacter) {
+                    gameState.selectedCharacter = series.playerCharacter;
+                    gameState.selectedPlayer2Character = series.opponentCharacter;
+
+                    showNotification(`🔒 Series Characters Locked!\n\nYou: ${characters[series.playerCharacter].name}\nOpponent: ${characters[series.opponentCharacter].name}\n\nGame ${series.gamesPlayed + 1} of series starting...`);
+
+                    setTimeout(() => {
+                        showMapSelect();
+                    }, 3000);
+                    return;
+                }
+            }
+
+            // In 2-player tournament mode, check if characters are already locked for the series
+            if (gameState.tournament2PlayerMode && gameState.tournament2PlayerData.isActive) {
+                const data = gameState.tournament2PlayerData;
+                const currentPlayerData = data.currentPlayer === 1 ? data.player1 : data.player2;
+                const series = currentPlayerData.currentSeries;
+
+                // If characters are already locked for this series, skip character selection
+                if (series.playerCharacter && series.opponentCharacter && !data.finalMatch) {
+                    gameState.selectedCharacter = series.playerCharacter;
+                    gameState.selectedPlayer2Character = series.opponentCharacter;
+
+                    showNotification(`🔒 Player ${data.currentPlayer} Series Characters Locked!\n\nYou: ${characters[series.playerCharacter].name}\nOpponent: ${characters[series.opponentCharacter].name}\n\nGame ${series.gamesPlayed + 1} of series starting...`);
+
+                    setTimeout(() => {
+                        showMapSelect();
+                    }, 3000);
+                    return;
+                }
+            }
+
             updateCharacterSelectPlayerInfo();
             updateSelectableCharacters();
             showScreen('characterSelectScreen');
@@ -6501,7 +8217,10 @@
             // Use the enemy character that was already selected in the preparation screen
             const enemyChar = gameState.selectedPlayer2Character;
             
-            if (gameState.gameMode === 'multiplayer') {
+            if (gameState.selectedBattleMode === 'boss_battle') {
+                document.getElementById('player1Name').textContent = `P1: ${characters[gameState.selectedCharacter].name}`;
+                document.getElementById('player2Name').textContent = `P2: ${characters[enemyChar].name}`;
+            } else if (gameState.gameMode === 'multiplayer') {
                 document.getElementById('player1Name').textContent = `P1: ${characters[gameState.selectedCharacter].name}`;
                 document.getElementById('player2Name').textContent = `P2: ${characters[enemyChar].name}`;
             } else {
@@ -6538,7 +8257,13 @@
             gameState.selectedCharacter = null;
             gameState.selectedPlayer2Character = null;
             gameState.selectedMap = null;
-            showMainMenu();
+
+            // If in tournament mode, show tournament screen, otherwise show main menu
+            if (gameState.tournamentMode && gameState.tournamentData.isActive) {
+                showTournamentSelect();
+            } else {
+                showMainMenu();
+            }
         }
 
         // BADGES SYSTEM - Define badge types and effects
@@ -6844,7 +8569,42 @@
             } else {
                 currentCharacters = gameState.unlockedCharacters;
             }
-            
+
+            // Filter characters by tournament tier if in tournament mode
+            if (gameState.tournamentMode && gameState.tournamentData.isActive) {
+                const tournamentTier = gameState.tournamentData.characterTier;
+                const tierCharacters = getCharactersByTier(tournamentTier);
+
+                // Only show characters that match the tournament tier
+                currentCharacters = currentCharacters.filter(charKey => {
+                    return tierCharacters.includes(charKey);
+                });
+
+                // Add tournament tier info
+                const tierInfo = document.createElement('div');
+                tierInfo.style.cssText = 'text-align: center; margin-bottom: 20px; padding: 15px; background: rgba(255, 215, 0, 0.2); border: 2px solid #FFD700; border-radius: 10px; color: #FFD700; font-weight: bold;';
+                tierInfo.innerHTML = `🏆 Tournament Mode: ${tournamentTier.toUpperCase()} Characters Only 🏆`;
+                grid.appendChild(tierInfo);
+            }
+
+            // Filter characters by tournament tier if in 2-player tournament mode
+            if (gameState.tournament2PlayerMode && gameState.tournament2PlayerData.isActive) {
+                const tournamentTier = gameState.tournament2PlayerData.characterTier;
+                const tierCharacters = getCharactersByTier(tournamentTier);
+                const currentPlayer = gameState.tournament2PlayerData.currentPlayer;
+
+                // Only show characters that match the tournament tier
+                currentCharacters = currentCharacters.filter(charKey => {
+                    return tierCharacters.includes(charKey);
+                });
+
+                // Add tournament tier info
+                const tierInfo = document.createElement('div');
+                tierInfo.style.cssText = 'text-align: center; margin-bottom: 20px; padding: 15px; background: rgba(233, 30, 99, 0.2); border: 2px solid #E91E63; border-radius: 10px; color: #E91E63; font-weight: bold;';
+                tierInfo.innerHTML = `👥 2P Tournament - Player ${currentPlayer}: ${tournamentTier.toUpperCase()} Characters Only 👥`;
+                grid.appendChild(tierInfo);
+            }
+
             currentCharacters.forEach(charKey => {
                 const char = characters[charKey];
                 const card = document.createElement('div');
@@ -6877,7 +8637,28 @@
                 showNotification('Please select a character first!');
                 return;
             }
-            
+
+            // In tournament mode, lock in the player's character for the series
+            if (gameState.tournamentMode && gameState.tournamentData.isActive) {
+                const series = gameState.tournamentData.currentSeries;
+                if (!series.playerCharacter) {
+                    series.playerCharacter = gameState.selectedCharacter;
+                    console.log(`🔒 Player character locked for series: ${characters[gameState.selectedCharacter].name}`);
+                }
+            }
+
+            // In 2-player tournament mode, lock in the current player's character for the series
+            if (gameState.tournament2PlayerMode && gameState.tournament2PlayerData.isActive) {
+                const data = gameState.tournament2PlayerData;
+                const currentPlayerData = data.currentPlayer === 1 ? data.player1 : data.player2;
+                const series = currentPlayerData.currentSeries;
+
+                if (!series.playerCharacter && !data.finalMatch) {
+                    series.playerCharacter = gameState.selectedCharacter;
+                    console.log(`🔒 Player ${data.currentPlayer} character locked for series: ${characters[gameState.selectedCharacter].name}`);
+                }
+            }
+
             if (gameState.gameMode === 'multiplayer') {
                 showPlayer2Select();
             } else {
@@ -7022,17 +8803,686 @@
         }
 
         function showBattleModeSelect() {
+            // If in tournament mode, redirect to tournament screen
+            if (gameState.tournamentMode && gameState.tournamentData.isActive) {
+                showNotification('🏆 Tournament in progress!\nYou must complete or forfeit your current tournament before starting new battles.');
+                showTournamentSelect();
+                return;
+            }
+
+            // If in 2-player tournament mode, redirect to 2-player tournament screen
+            if (gameState.tournament2PlayerMode && gameState.tournament2PlayerData.isActive) {
+                showNotification('👥 2-Player Tournament in progress!\nYou must complete or forfeit your current tournament before starting new battles.');
+                showTournamentSelect2Player();
+                return;
+            }
+
+            updateBattleModeDisplay();
             showScreen('battleModeScreen');
         }
 
+        function updateBattleModeDisplay() {
+            const singlePlayerTournamentCard = document.getElementById('singlePlayerTournamentCard');
+            const multiPlayerTournamentCard = document.getElementById('multiPlayerTournamentCard');
+            const bossBattleCard = document.getElementById('bossBattleCard');
+
+            if (gameState.gameMode === 'multiplayer') {
+                // Hide single player tournament, show 2-player tournament and boss battle
+                singlePlayerTournamentCard.style.display = 'none';
+                multiPlayerTournamentCard.style.display = 'block';
+                bossBattleCard.style.display = 'block';
+            } else {
+                // Show single player tournament, hide 2-player tournament and boss battle
+                singlePlayerTournamentCard.style.display = 'block';
+                multiPlayerTournamentCard.style.display = 'none';
+                bossBattleCard.style.display = 'none';
+            }
+        }
+
         function selectBattleMode(mode) {
+            // Boss battle is only available in multiplayer mode
+            if (mode === 'boss_battle' && gameState.gameMode !== 'multiplayer') {
+                alert('🐉 Boss Battle is only available in 2-Player mode!\n\nPlease select 2-Player mode from the main menu first.');
+                return;
+            }
+
             gameState.selectedBattleMode = mode;
+            console.log('🏁 Battle mode selected:', mode);
             if (gameState.gameMode === 'multiplayer') {
                 showCharacterSelect();
             } else {
                 showCharacterSelect();
             }
         }
+
+        // TOURNAMENT SYSTEM FUNCTIONS
+        function showTournamentSelect() {
+            updateTournamentStatus();
+            showScreen('tournamentSelectScreen');
+        }
+
+        function startTournament(tournamentType) {
+            // Tournament configurations with character tiers and reduced rewards
+            const tournaments = {
+                rookie: {
+                    name: 'Rookie Tournament',
+                    entryFee: 25,
+                    prizePool: 75,
+                    rounds: 3,
+                    roundNames: ['Quarterfinal', 'Semifinal', 'Final'],
+                    characterTier: 'common',
+                    seriesLength: 3 // First to win 3 games
+                },
+                pro: {
+                    name: 'Pro Tournament',
+                    entryFee: 50,
+                    prizePool: 200,
+                    rounds: 4,
+                    roundNames: ['Round of 16', 'Quarterfinal', 'Semifinal', 'Final'],
+                    characterTier: 'rare',
+                    seriesLength: 3
+                },
+                champion: {
+                    name: 'Champion Tournament',
+                    entryFee: 100,
+                    prizePool: 500,
+                    rounds: 5,
+                    roundNames: ['Round of 32', 'Round of 16', 'Quarterfinal', 'Semifinal', 'Final'],
+                    characterTier: 'epic',
+                    seriesLength: 3
+                },
+                legendary: {
+                    name: 'Legendary Tournament',
+                    entryFee: 200,
+                    prizePool: 1000,
+                    rounds: 6,
+                    roundNames: ['Round of 64', 'Round of 32', 'Round of 16', 'Quarterfinal', 'Semifinal', 'Final'],
+                    characterTier: 'legendary',
+                    seriesLength: 3
+                }
+            };
+
+            const tournament = tournaments[tournamentType];
+            if (!tournament) return;
+
+            // Check if player has enough coins
+            let playerCoins;
+            if (gameState.gameMode === 'multiplayer') {
+                playerCoins = gameState.currentShopPlayer === 1 ? gameState.player1Coins : gameState.player2Coins;
+            } else {
+                playerCoins = gameState.coins;
+            }
+
+            if (playerCoins < tournament.entryFee) {
+                showNotification(`❌ Not enough coins!\nYou need ${tournament.entryFee} coins to enter this tournament.\nYou have ${playerCoins} coins.`);
+                return;
+            }
+
+            // Deduct entry fee
+            if (gameState.gameMode === 'multiplayer') {
+                if (gameState.currentShopPlayer === 1) {
+                    gameState.player1Coins -= tournament.entryFee;
+                } else {
+                    gameState.player2Coins -= tournament.entryFee;
+                }
+                updateMultiplayerCoinsDisplay();
+            } else {
+                gameState.coins -= tournament.entryFee;
+                updateSinglePlayerCoinsDisplay();
+            }
+
+            // Initialize tournament
+            gameState.tournamentMode = true;
+            gameState.tournamentData = {
+                type: tournamentType,
+                name: tournament.name,
+                entryFee: tournament.entryFee,
+                currentRound: 0,
+                totalRounds: tournament.rounds,
+                roundNames: tournament.roundNames,
+                prizePool: tournament.prizePool,
+                characterTier: tournament.characterTier,
+                seriesLength: tournament.seriesLength,
+                isActive: true,
+                roundsWon: 0,
+                currentSeries: {
+                    playerWins: 0,
+                    opponentWins: 0,
+                    gamesPlayed: 0,
+                    playerCharacter: null,
+                    opponentCharacter: null
+                },
+                bracket: generateTournamentBracket(tournament.rounds, tournament.characterTier)
+            };
+
+            console.log(`🏆 Tournament started: ${tournament.name}`);
+            console.log(`💰 Entry fee deducted: ${tournament.entryFee} coins`);
+            console.log(`🎯 Prize pool: ${tournament.prizePool} coins`);
+
+            updateTournamentStatus();
+            updateUniversalCoinsDisplay();
+
+            // Start first round
+            showNotification(`🏆 ${tournament.name} Started!\n💰 Entry fee: ${tournament.entryFee} coins paid\n🎯 Prize pool: ${tournament.prizePool} coins\n\nGood luck in the ${tournament.roundNames[0]}!`);
+
+            // Proceed to character selection
+            setTimeout(() => {
+                showCharacterSelect();
+            }, 3000);
+        }
+
+        // Character tier system for tournaments
+        function getCharactersByTier(tier) {
+            // Get all character keys and filter by rarity
+            const allCharacterKeys = Object.keys(characters);
+            return allCharacterKeys.filter(key => {
+                const character = characters[key];
+                return character.rarity === tier;
+            });
+        }
+
+        function generateTournamentBracket(rounds, characterTier) {
+            // Simple bracket - we don't need complex opponent tracking since we generate enemies dynamically
+            return {
+                rounds: rounds,
+                characterTier: characterTier,
+                generated: true
+            };
+        }
+
+        function updateTournamentStatus() {
+            const statusDiv = document.getElementById('tournamentStatus');
+            const forfeitButton = document.getElementById('forfeitButton');
+
+            if (gameState.tournamentMode && gameState.tournamentData.isActive) {
+                statusDiv.style.display = 'block';
+                if (forfeitButton) forfeitButton.style.display = 'block';
+
+                const data = gameState.tournamentData;
+                const currentRoundName = data.roundNames[data.currentRound] || 'Unknown Round';
+                const series = data.currentSeries;
+
+                // Generate series characters display
+                let seriesCharactersHTML = '';
+                if (series.playerCharacter && series.opponentCharacter) {
+                    const playerChar = characters[series.playerCharacter];
+                    const opponentChar = characters[series.opponentCharacter];
+                    seriesCharactersHTML = `
+                        <div style="margin: 15px 0; padding: 15px; background: rgba(255, 215, 0, 0.1); border: 2px solid #FFD700; border-radius: 10px;">
+                            <h4 style="margin: 0 0 10px 0; color: #FFD700; text-align: center;">🔒 Series Characters Locked</h4>
+                            <div style="display: flex; justify-content: space-around; align-items: center;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 32px;">${playerChar.emoji}</div>
+                                    <div style="color: #4CAF50; font-weight: bold;">YOU</div>
+                                    <div style="color: #FFF;">${playerChar.name}</div>
+                                </div>
+                                <div style="color: #FFD700; font-size: 24px; font-weight: bold;">VS</div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 32px;">${opponentChar.emoji}</div>
+                                    <div style="color: #FF6B35; font-weight: bold;">OPPONENT</div>
+                                    <div style="color: #FFF;">${opponentChar.name}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                statusDiv.innerHTML = `
+                    <div style="background: rgba(0,0,0,0.2); border-radius: 15px; padding: 20px; border: 3px solid #FFD700;">
+                        <h3 style="margin: 0 0 10px 0; color: #FFD700;">🏆 ${data.name} - IN PROGRESS 🏆</h3>
+                        <p style="margin: 5px 0; font-size: 16px;">Current Round: <strong>${currentRoundName}</strong> (${data.currentRound + 1}/${data.totalRounds})</p>
+                        <p style="margin: 5px 0; font-size: 16px;">Series Score: <strong>You ${series.playerWins} - ${series.opponentWins} Opponent</strong></p>
+                        <p style="margin: 5px 0; font-size: 14px;">First to ${data.seriesLength} wins advances!</p>
+                        ${seriesCharactersHTML}
+                        <p style="margin: 5px 0; font-size: 16px;">Rounds Won: <strong>${data.roundsWon}/${data.totalRounds}</strong></p>
+                        <p style="margin: 5px 0; font-size: 16px;">Prize Pool: <strong>${data.prizePool} coins</strong></p>
+                        <p style="margin: 5px 0; font-size: 14px; color: #4CAF50;">Character Tier: <strong>${data.characterTier.toUpperCase()}</strong></p>
+                        <p style="margin: 10px 0 0 0; color: #FF6B35; font-size: 14px;">⚠️ You must win ALL rounds to claim the prize!</p>
+                        ${generateBracketDisplay(data)}
+                    </div>
+                `;
+            } else {
+                statusDiv.style.display = 'none';
+                if (forfeitButton) forfeitButton.style.display = 'none';
+            }
+        }
+
+        function generateBracketDisplay(data) {
+            if (!data.bracket) return '';
+
+            let bracketHTML = '<div style="margin-top: 20px; border-top: 3px solid #FFD700; padding-top: 20px; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 20px;"><h4 style="color: #FFD700; margin: 0 0 15px 0; text-align: center; font-size: 18px;">🏆 TOURNAMENT BRACKET 🏆</h4>';
+
+            data.roundNames.forEach((roundName, index) => {
+                const isCurrentRound = index === data.currentRound;
+                const isPastRound = index < data.currentRound;
+                const series = data.currentSeries;
+
+                let statusText = '';
+                let statusColor = '';
+                let bgColor = '';
+                let borderColor = '';
+
+                if (isPastRound) {
+                    statusText = '✅ WON';
+                    statusColor = '#4CAF50';
+                    bgColor = 'rgba(76, 175, 80, 0.3)';
+                    borderColor = '#4CAF50';
+                } else if (isCurrentRound) {
+                    statusText = `🔥 IN PROGRESS (${series.playerWins}-${series.opponentWins})`;
+                    statusColor = '#FFD700';
+                    bgColor = 'rgba(255, 215, 0, 0.3)';
+                    borderColor = '#FFD700';
+                } else {
+                    statusText = '⏳ UPCOMING';
+                    statusColor = '#999';
+                    bgColor = 'rgba(128, 128, 128, 0.2)';
+                    borderColor = '#666';
+                }
+
+                bracketHTML += `
+                    <div style="margin: 12px 0; padding: 15px; border-radius: 10px; background: ${bgColor}; border: 2px solid ${borderColor}; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center;">
+                            <span style="font-size: 24px; margin-right: 10px;">${isPastRound ? '🏆' : isCurrentRound ? '⚔️' : '🔒'}</span>
+                            <strong style="color: ${statusColor}; font-size: 16px;">${roundName}</strong>
+                        </div>
+                        <span style="color: ${statusColor}; font-weight: bold; font-size: 14px;">
+                            ${statusText}
+                        </span>
+                    </div>
+                `;
+            });
+
+            bracketHTML += '</div>';
+            return bracketHTML;
+        }
+
+        function forfeitTournament() {
+            if (!gameState.tournamentMode || !gameState.tournamentData.isActive) {
+                showNotification('No active tournament to forfeit.');
+                return;
+            }
+
+            const data = gameState.tournamentData;
+
+            // Confirm forfeit
+            if (confirm(`Are you sure you want to forfeit the ${data.name}?\n\nYou will lose your entry fee (${data.entryFee} coins) and receive no prize.`)) {
+                // Reset tournament
+                gameState.tournamentMode = false;
+                gameState.tournamentData.isActive = false;
+
+                showNotification(`🏳️ Tournament Forfeited!\n\n${data.name} has been abandoned.\nEntry fee (${data.entryFee} coins) lost.\n\nYou can now start new battles.`);
+
+                updateTournamentStatus();
+                updateUniversalCoinsDisplay();
+
+                // Return to main menu
+                setTimeout(() => {
+                    showMainMenu();
+                }, 3000);
+            }
+        }
+
+        // 2-PLAYER TOURNAMENT SYSTEM
+        function showTournamentSelect2Player() {
+            update2PlayerTournamentStatus();
+            showScreen('tournament2PlayerScreen');
+        }
+
+        function start2PlayerTournament(tournamentType) {
+            // Tournament configurations for 2-player mode
+            const tournaments = {
+                rookie: {
+                    name: 'Rookie 2P Tournament',
+                    entryFee: 25,
+                    prizePool: 100,
+                    rounds: 3,
+                    roundNames: ['Quarterfinal', 'Semifinal', 'Final'],
+                    characterTier: 'common',
+                    seriesLength: 3
+                },
+                pro: {
+                    name: 'Pro 2P Tournament',
+                    entryFee: 50,
+                    prizePool: 300,
+                    rounds: 4,
+                    roundNames: ['Round of 16', 'Quarterfinal', 'Semifinal', 'Final'],
+                    characterTier: 'rare',
+                    seriesLength: 3
+                },
+                champion: {
+                    name: 'Champion 2P Tournament',
+                    entryFee: 100,
+                    prizePool: 750,
+                    rounds: 5,
+                    roundNames: ['Round of 32', 'Round of 16', 'Quarterfinal', 'Semifinal', 'Final'],
+                    characterTier: 'epic',
+                    seriesLength: 3
+                },
+                legendary: {
+                    name: 'Legendary 2P Tournament',
+                    entryFee: 200,
+                    prizePool: 1500,
+                    rounds: 6,
+                    roundNames: ['Round of 64', 'Round of 32', 'Round of 16', 'Quarterfinal', 'Semifinal', 'Final'],
+                    characterTier: 'legendary',
+                    seriesLength: 3
+                }
+            };
+
+            const tournament = tournaments[tournamentType];
+            if (!tournament) return;
+
+            // Check if both players have enough coins
+            if (gameState.player1Coins < tournament.entryFee) {
+                showNotification(`❌ Player 1 doesn't have enough coins!\nNeeds ${tournament.entryFee} coins, has ${gameState.player1Coins} coins.`);
+                return;
+            }
+            if (gameState.player2Coins < tournament.entryFee) {
+                showNotification(`❌ Player 2 doesn't have enough coins!\nNeeds ${tournament.entryFee} coins, has ${gameState.player2Coins} coins.`);
+                return;
+            }
+
+            // Deduct entry fees from both players
+            gameState.player1Coins -= tournament.entryFee;
+            gameState.player2Coins -= tournament.entryFee;
+            updateMultiplayerCoinsDisplay();
+
+            // Initialize 2-player tournament
+            gameState.tournament2PlayerMode = true;
+            gameState.tournament2PlayerData = {
+                type: tournamentType,
+                name: tournament.name,
+                entryFee: tournament.entryFee,
+                currentRound: 0,
+                totalRounds: tournament.rounds,
+                roundNames: tournament.roundNames,
+                prizePool: tournament.prizePool,
+                characterTier: tournament.characterTier,
+                seriesLength: tournament.seriesLength,
+                isActive: true,
+
+                player1: {
+                    roundsWon: 0,
+                    isEliminated: false,
+                    currentSeries: {
+                        playerWins: 0,
+                        opponentWins: 0,
+                        gamesPlayed: 0,
+                        playerCharacter: null,
+                        opponentCharacter: null
+                    }
+                },
+                player2: {
+                    roundsWon: 0,
+                    isEliminated: false,
+                    currentSeries: {
+                        playerWins: 0,
+                        opponentWins: 0,
+                        gamesPlayed: 0,
+                        playerCharacter: null,
+                        opponentCharacter: null
+                    }
+                },
+
+                currentPlayer: 1,
+                bracket: generate2PlayerBracket(tournament.rounds),
+                finalMatch: false
+            };
+
+            console.log(`🏆 2-Player Tournament started: ${tournament.name}`);
+            console.log(`💰 Entry fees deducted: ${tournament.entryFee} coins each`);
+            console.log(`🎯 Prize pool: ${tournament.prizePool} coins`);
+
+            update2PlayerTournamentStatus();
+            updateUniversalCoinsDisplay();
+
+            showNotification(`🏆 ${tournament.name} Started!\n\n💰 Entry fees: ${tournament.entryFee} coins each paid\n🎯 Prize pool: ${tournament.prizePool} coins\n\nPlayer 1 starts first!\nBoth players on opposite bracket sides.`);
+
+            // Start with Player 1
+            setTimeout(() => {
+                start2PlayerRound();
+            }, 4000);
+        }
+
+        function generate2PlayerBracket(rounds) {
+            return {
+                rounds: rounds,
+                player1Side: 'left',  // Player 1 starts on left side of bracket
+                player2Side: 'right', // Player 2 starts on right side of bracket
+                generated: true
+            };
+        }
+
+        function start2PlayerRound() {
+            const data = gameState.tournament2PlayerData;
+            const currentPlayerData = data.currentPlayer === 1 ? data.player1 : data.player2;
+
+            // Check if current player is eliminated
+            if (currentPlayerData.isEliminated) {
+                // Switch to other player or end tournament
+                switchTo2PlayerNextPlayer();
+                return;
+            }
+
+            // Set game mode and current shop player for character selection
+            gameState.gameMode = 'singleplayer'; // Each player plays against CPU
+            gameState.currentShopPlayer = data.currentPlayer;
+
+            showNotification(`🎮 Player ${data.currentPlayer}'s Turn!\n\n${data.roundNames[data.currentRound]} Round\nSeries Score: ${currentPlayerData.currentSeries.playerWins}-${currentPlayerData.currentSeries.opponentWins}\n\nSelect your character!`);
+
+            setTimeout(() => {
+                showCharacterSelect();
+            }, 3000);
+        }
+
+        function switchTo2PlayerNextPlayer() {
+            const data = gameState.tournament2PlayerData;
+
+            // Check if both players completed their rounds or one is eliminated
+            const player1Data = data.player1;
+            const player2Data = data.player2;
+
+            // If current player just finished and other player hasn't played this round
+            if (data.currentPlayer === 1 && !player2Data.isEliminated && player2Data.roundsWon === player1Data.roundsWon - 1) {
+                // Switch to Player 2
+                data.currentPlayer = 2;
+                start2PlayerRound();
+            } else if (data.currentPlayer === 2 && !player1Data.isEliminated && player1Data.roundsWon === player2Data.roundsWon - 1) {
+                // Switch to Player 1
+                data.currentPlayer = 1;
+                start2PlayerRound();
+            } else {
+                // Both players completed this round or one is eliminated
+                check2PlayerTournamentProgress();
+            }
+        }
+
+        function check2PlayerTournamentProgress() {
+            const data = gameState.tournament2PlayerData;
+            const player1Data = data.player1;
+            const player2Data = data.player2;
+
+            // Check if we're at the finals and both players made it
+            if (data.currentRound === data.totalRounds - 1 && !player1Data.isEliminated && !player2Data.isEliminated) {
+                // FINALS: Player vs Player!
+                data.finalMatch = true;
+                showNotification(`🏆 FINALS: PLAYER VS PLAYER! 🏆\n\nBoth players made it to the finals!\nNow you face each other for the championship!\n\nPrize Pool: ${data.prizePool} coins`);
+
+                setTimeout(() => {
+                    start2PlayerFinalMatch();
+                }, 4000);
+            } else if (player1Data.isEliminated && player2Data.isEliminated) {
+                // Both eliminated - tournament over
+                end2PlayerTournament(null);
+            } else if (player1Data.isEliminated) {
+                // Player 1 eliminated, Player 2 continues alone
+                continueWith2PlayerSolo(2);
+            } else if (player2Data.isEliminated) {
+                // Player 2 eliminated, Player 1 continues alone
+                continueWith2PlayerSolo(1);
+            } else {
+                // Both players advance to next round
+                data.currentRound++;
+                data.currentPlayer = 1; // Start next round with Player 1
+
+                // Reset series for both players
+                player1Data.currentSeries = {
+                    playerWins: 0,
+                    opponentWins: 0,
+                    gamesPlayed: 0,
+                    playerCharacter: null,
+                    opponentCharacter: null
+                };
+                player2Data.currentSeries = {
+                    playerWins: 0,
+                    opponentWins: 0,
+                    gamesPlayed: 0,
+                    playerCharacter: null,
+                    opponentCharacter: null
+                };
+
+                update2PlayerTournamentStatus();
+                start2PlayerRound();
+            }
+        }
+
+        function continueWith2PlayerSolo(survivingPlayer) {
+            const data = gameState.tournament2PlayerData;
+
+            showNotification(`💀 Player ${survivingPlayer === 1 ? 2 : 1} Eliminated!\n\nPlayer ${survivingPlayer} continues the tournament alone against CPU opponents.\n\nComplete the remaining rounds to win the prize pool!`);
+
+            // Convert to single player tournament for the surviving player
+            gameState.tournamentMode = true;
+            gameState.tournament2PlayerMode = false;
+
+            const survivingPlayerData = survivingPlayer === 1 ? data.player1 : data.player2;
+            gameState.tournamentData = {
+                type: data.type,
+                name: data.name + ` (Player ${survivingPlayer} Solo)`,
+                entryFee: data.entryFee,
+                currentRound: data.currentRound,
+                totalRounds: data.totalRounds,
+                roundNames: data.roundNames,
+                prizePool: data.prizePool,
+                characterTier: data.characterTier,
+                seriesLength: data.seriesLength,
+                isActive: true,
+                roundsWon: survivingPlayerData.roundsWon,
+                currentSeries: survivingPlayerData.currentSeries
+            };
+
+            gameState.gameMode = 'singleplayer';
+
+            setTimeout(() => {
+                updateTournamentStatus();
+                showCharacterSelect();
+            }, 4000);
+        }
+
+        function start2PlayerFinalMatch() {
+            const data = gameState.tournament2PlayerData;
+
+            // Set up multiplayer final match
+            gameState.gameMode = 'multiplayer';
+            gameState.selectedBattleMode = 'normal';
+
+            showNotification(`🏆 CHAMPIONSHIP FINALS! 🏆\n\nPlayer 1 vs Player 2\nWinner takes ${data.prizePool} coins!\n\nSelect your characters!`);
+
+            setTimeout(() => {
+                showCharacterSelect();
+            }, 3000);
+        }
+
+        function end2PlayerTournament(winner) {
+            const data = gameState.tournament2PlayerData;
+
+            if (winner === 1) {
+                gameState.player1Coins += data.prizePool;
+                showNotification(`🏆 PLAYER 1 WINS THE TOURNAMENT! 🏆\n\n${data.name} Champion!\nPrize Pool: ${data.prizePool} coins awarded to Player 1!`);
+            } else if (winner === 2) {
+                gameState.player2Coins += data.prizePool;
+                showNotification(`🏆 PLAYER 2 WINS THE TOURNAMENT! 🏆\n\n${data.name} Champion!\nPrize Pool: ${data.prizePool} coins awarded to Player 2!`);
+            } else {
+                showNotification(`💀 TOURNAMENT ENDED! 💀\n\nBoth players eliminated.\nNo prize awarded.\nEntry fees lost.`);
+            }
+
+            // Reset tournament
+            gameState.tournament2PlayerMode = false;
+            gameState.tournament2PlayerData.isActive = false;
+
+            updateMultiplayerCoinsDisplay();
+            update2PlayerTournamentStatus();
+
+            setTimeout(() => {
+                showMainMenu();
+            }, 5000);
+        }
+
+        function update2PlayerTournamentStatus() {
+            const statusDiv = document.getElementById('tournament2PlayerStatus');
+            const forfeitButton = document.getElementById('forfeit2PlayerButton');
+
+            if (gameState.tournament2PlayerMode && gameState.tournament2PlayerData.isActive) {
+                statusDiv.style.display = 'block';
+                if (forfeitButton) forfeitButton.style.display = 'block';
+
+                const data = gameState.tournament2PlayerData;
+                const currentRoundName = data.roundNames[data.currentRound] || 'Unknown Round';
+
+                statusDiv.innerHTML = `
+                    <div style="background: rgba(0,0,0,0.3); border-radius: 15px; padding: 20px; border: 3px solid #E91E63;">
+                        <h3 style="margin: 0 0 15px 0; color: #E91E63;">👥 ${data.name} - IN PROGRESS 👥</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                            <div style="background: rgba(76, 175, 80, 0.2); border: 2px solid #4CAF50; border-radius: 10px; padding: 15px;">
+                                <h4 style="margin: 0 0 10px 0; color: #4CAF50;">🎮 PLAYER 1</h4>
+                                <p style="margin: 5px 0;">Rounds Won: <strong>${data.player1.roundsWon}/${data.totalRounds}</strong></p>
+                                <p style="margin: 5px 0;">Status: <strong>${data.player1.isEliminated ? '💀 ELIMINATED' : '✅ ACTIVE'}</strong></p>
+                                <p style="margin: 5px 0;">Series: <strong>${data.player1.currentSeries.playerWins}-${data.player1.currentSeries.opponentWins}</strong></p>
+                            </div>
+                            <div style="background: rgba(33, 150, 243, 0.2); border: 2px solid #2196F3; border-radius: 10px; padding: 15px;">
+                                <h4 style="margin: 0 0 10px 0; color: #2196F3;">🎮 PLAYER 2</h4>
+                                <p style="margin: 5px 0;">Rounds Won: <strong>${data.player2.roundsWon}/${data.totalRounds}</strong></p>
+                                <p style="margin: 5px 0;">Status: <strong>${data.player2.isEliminated ? '💀 ELIMINATED' : '✅ ACTIVE'}</strong></p>
+                                <p style="margin: 5px 0;">Series: <strong>${data.player2.currentSeries.playerWins}-${data.player2.currentSeries.opponentWins}</strong></p>
+                            </div>
+                        </div>
+                        <p style="margin: 5px 0; font-size: 16px; text-align: center;">Current Round: <strong>${currentRoundName}</strong> (${data.currentRound + 1}/${data.totalRounds})</p>
+                        <p style="margin: 5px 0; font-size: 16px; text-align: center;">Current Turn: <strong>Player ${data.currentPlayer}</strong></p>
+                        <p style="margin: 5px 0; font-size: 16px; text-align: center;">Prize Pool: <strong>${data.prizePool} coins</strong></p>
+                        <p style="margin: 5px 0; font-size: 14px; color: #4CAF50; text-align: center;">Character Tier: <strong>${data.characterTier.toUpperCase()}</strong></p>
+                        ${data.finalMatch ? '<p style="margin: 10px 0; color: #FFD700; font-size: 18px; text-align: center; font-weight: bold;">🏆 FINALS: PLAYER VS PLAYER! 🏆</p>' : ''}
+                    </div>
+                `;
+            } else {
+                statusDiv.style.display = 'none';
+                if (forfeitButton) forfeitButton.style.display = 'none';
+            }
+        }
+
+        function forfeit2PlayerTournament() {
+            if (!gameState.tournament2PlayerMode || !gameState.tournament2PlayerData.isActive) {
+                showNotification('No active 2-player tournament to forfeit.');
+                return;
+            }
+
+            const data = gameState.tournament2PlayerData;
+
+            if (confirm(`Are you sure you want to forfeit the ${data.name}?\n\nBoth players will lose their entry fees (${data.entryFee} coins each) and receive no prize.`)) {
+                gameState.tournament2PlayerMode = false;
+                gameState.tournament2PlayerData.isActive = false;
+
+                showNotification(`🏳️ 2-Player Tournament Forfeited!\n\n${data.name} has been abandoned.\nEntry fees (${data.entryFee} coins each) lost.\n\nYou can now start new battles.`);
+
+                update2PlayerTournamentStatus();
+                updateUniversalCoinsDisplay();
+
+                setTimeout(() => {
+                    showMainMenu();
+                }, 3000);
+            }
+        }
+
+
 
         function showNotification(message) {
             const notification = document.getElementById('notification');
@@ -7372,14 +9822,68 @@
                 if (!gameState.selectedPlayer2Character) return;
                 enemyChar = gameState.selectedPlayer2Character;
             } else {
-                // SMART DIFFICULTY-BASED ENEMY SELECTION!
-                const possibleEnemies = getEnemiesByDifficulty(gameState.selectedDifficulty);
-                if (possibleEnemies.length > 0) {
-                    enemyChar = possibleEnemies[Math.floor(Math.random() * possibleEnemies.length)];
+                // TOURNAMENT MODE: Use tournament tier characters
+                if (gameState.tournamentMode && gameState.tournamentData.isActive) {
+                    const series = gameState.tournamentData.currentSeries;
+
+                    // If opponent character is already locked for this series, use it
+                    if (series.opponentCharacter) {
+                        enemyChar = series.opponentCharacter;
+                        console.log(`🔒 Using locked opponent character: ${characters[enemyChar].name}`);
+                    } else {
+                        // First game of series - select and lock opponent character
+                        const tournamentTier = gameState.tournamentData.characterTier;
+                        const possibleEnemies = getCharactersByTier(tournamentTier);
+                        if (possibleEnemies.length > 0) {
+                            enemyChar = possibleEnemies[Math.floor(Math.random() * possibleEnemies.length)];
+                            series.opponentCharacter = enemyChar;
+                            console.log(`🔒 Opponent character locked for series: ${characters[enemyChar].name}`);
+                        } else {
+                            // Fallback to common characters
+                            const commonEnemies = getCharactersByTier('common');
+                            enemyChar = commonEnemies[Math.floor(Math.random() * commonEnemies.length)];
+                            series.opponentCharacter = enemyChar;
+                        }
+                    }
+                } else if (gameState.tournament2PlayerMode && gameState.tournament2PlayerData.isActive) {
+                    // 2-PLAYER TOURNAMENT MODE: Use tournament tier characters
+                    const data = gameState.tournament2PlayerData;
+                    const currentPlayerData = data.currentPlayer === 1 ? data.player1 : data.player2;
+                    const series = currentPlayerData.currentSeries;
+
+                    // If opponent character is already locked for this series, use it
+                    if (series.opponentCharacter && !data.finalMatch) {
+                        enemyChar = series.opponentCharacter;
+                        console.log(`🔒 Using locked opponent character for Player ${data.currentPlayer}: ${characters[enemyChar].name}`);
+                    } else if (!data.finalMatch) {
+                        // First game of series - select and lock opponent character
+                        const tournamentTier = data.characterTier;
+                        const possibleEnemies = getCharactersByTier(tournamentTier);
+                        if (possibleEnemies.length > 0) {
+                            enemyChar = possibleEnemies[Math.floor(Math.random() * possibleEnemies.length)];
+                            series.opponentCharacter = enemyChar;
+                            console.log(`🔒 Opponent character locked for Player ${data.currentPlayer} series: ${characters[enemyChar].name}`);
+                        } else {
+                            // Fallback to common characters
+                            const commonEnemies = getCharactersByTier('common');
+                            enemyChar = commonEnemies[Math.floor(Math.random() * commonEnemies.length)];
+                            series.opponentCharacter = enemyChar;
+                        }
+                    } else {
+                        // Final match - this is handled in multiplayer mode, shouldn't reach here
+                        const allEnemies = Object.keys(characters);
+                        enemyChar = allEnemies[Math.floor(Math.random() * allEnemies.length)];
+                    }
                 } else {
-                    // Fallback to any character if no enemies of that rarity exist
-                    const allEnemies = Object.keys(characters);
-                    enemyChar = allEnemies[Math.floor(Math.random() * allEnemies.length)];
+                    // SMART DIFFICULTY-BASED ENEMY SELECTION!
+                    const possibleEnemies = getEnemiesByDifficulty(gameState.selectedDifficulty);
+                    if (possibleEnemies.length > 0) {
+                        enemyChar = possibleEnemies[Math.floor(Math.random() * possibleEnemies.length)];
+                    } else {
+                        // Fallback to any character if no enemies of that rarity exist
+                        const allEnemies = Object.keys(characters);
+                        enemyChar = allEnemies[Math.floor(Math.random() * allEnemies.length)];
+                    }
                 }
             }
             
