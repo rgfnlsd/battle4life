@@ -68,6 +68,12 @@
         delta: { name: 'Delta Force', emoji: '🔻', damage: 120, type: 'military', duration: 10000 }
     };
 
+    // Helper function to ensure coins are always valid numbers (prevent NaN)
+    function safeCoins(value) {
+        const num = Number(value);
+        return isNaN(num) || !isFinite(num) ? 0 : Math.max(0, Math.floor(num));
+    }
+
     let gameState = {
         gameMode: null, // 'singleplayer' or 'multiplayer' - selected first
         selectedBattleMode: 'normal', // 'normal', 'special_drop', or 'flag_capture'
@@ -1622,6 +1628,27 @@
                         effect.y -= 2;
                         effect.x += (Math.random() - 0.5) * 0.5;
                         break;
+                    case 'explosion_particle':
+                        // Move particles outward
+                        effect.x += effect.velocityX || 0;
+                        effect.y += effect.velocityY || 0;
+                        // Slow down over time
+                        effect.velocityX *= 0.95;
+                        effect.velocityY *= 0.95;
+                        // Shrink
+                        effect.size = (effect.size || 6) * 0.96;
+                        break;
+                    case 'fire_particle':
+                        // Fire rises and spreads
+                        effect.x += effect.velocityX || 0;
+                        effect.y += effect.velocityY || 0;
+                        effect.velocityY -= 0.1; // Rise up
+                        effect.velocityX *= 0.98;
+                        effect.size = (effect.size || 5) * 0.95;
+                        break;
+                    case 'explosion_flash':
+                        // Flash just fades, no movement
+                        break;
                 }
 
                 // Remove expired effects
@@ -1932,6 +1959,57 @@
                         this.ctx.font = 'bold 16px Arial';
                         this.ctx.textAlign = 'center';
                         this.ctx.fillText(effect.damage, effect.x, effect.y);
+                        break;
+
+                    case 'explosion_particle':
+                        // Explosion particles with color
+                        const color = effect.color || '#FF4500';
+                        this.ctx.fillStyle = color.replace(')', `, ${alpha})`).replace('rgb', 'rgba');
+                        this.ctx.shadowColor = color;
+                        this.ctx.shadowBlur = 10;
+                        this.ctx.beginPath();
+                        this.ctx.arc(effect.x, effect.y, effect.size || 6, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        this.ctx.shadowBlur = 0;
+                        break;
+
+                    case 'fire_particle':
+                        // Fire particles (orange/yellow)
+                        const fireAlpha = alpha * 0.8;
+                        this.ctx.fillStyle = `rgba(255, ${100 + Math.random() * 100}, 0, ${fireAlpha})`;
+                        this.ctx.shadowColor = '#FF4500';
+                        this.ctx.shadowBlur = 8;
+                        this.ctx.beginPath();
+                        this.ctx.arc(effect.x, effect.y, effect.size || 5, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        this.ctx.shadowBlur = 0;
+                        break;
+
+                    case 'explosion_flash':
+                        // Central explosion flash
+                        const flashSize = (1 - alpha) * (effect.maxSize || 100);
+                        const flashAlpha = alpha * 0.6;
+
+                        // Outer ring
+                        this.ctx.fillStyle = `rgba(255, 100, 0, ${flashAlpha * 0.3})`;
+                        this.ctx.beginPath();
+                        this.ctx.arc(effect.x, effect.y, flashSize, 0, Math.PI * 2);
+                        this.ctx.fill();
+
+                        // Middle ring
+                        this.ctx.fillStyle = `rgba(255, 150, 0, ${flashAlpha * 0.5})`;
+                        this.ctx.beginPath();
+                        this.ctx.arc(effect.x, effect.y, flashSize * 0.7, 0, Math.PI * 2);
+                        this.ctx.fill();
+
+                        // Inner core
+                        this.ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+                        this.ctx.shadowColor = '#FFFFFF';
+                        this.ctx.shadowBlur = 20;
+                        this.ctx.beginPath();
+                        this.ctx.arc(effect.x, effect.y, flashSize * 0.4, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        this.ctx.shadowBlur = 0;
                         break;
                 }
             });
@@ -2746,6 +2824,11 @@
             gameState.flagCapture.holdStartTime = Date.now();
             gameState.flagCapture.flag = null; // Remove flag from world
 
+            // Initialize AI flag running state when AI picks up flag
+            if (player === 'player2') {
+                this.aiFlagRunning = null; // Will be initialized in updateAI
+            }
+
             const playerName = player === 'player1' ? 'Player 1' : 'Player 2';
             console.log(`${playerName} picked up the flag!`);
             showNotification(`🏁 ${playerName} has the FLAG!\nHold for 15 seconds to win!`);
@@ -2755,6 +2838,14 @@
             // Transfer flag from one player to another
             gameState.flagCapture.flagHolder = toPlayer;
             gameState.flagCapture.holdStartTime = Date.now(); // Reset timer for new holder
+
+            // Reset AI flag running state when flag changes hands
+            if (fromPlayer === 'player2') {
+                this.aiFlagRunning = null;
+            }
+            if (toPlayer === 'player2') {
+                this.aiFlagRunning = null; // Will be reinitialized in updateAI
+            }
 
             const fromPlayerName = fromPlayer === 'player1' ? 'Player 1' : 'Player 2';
             const toPlayerName = toPlayer === 'player1' ? 'Player 1' : 'Player 2';
@@ -2771,6 +2862,11 @@
             gameState.flagCapture.flag = new Flag(player.x, player.y - 20);
             gameState.flagCapture.flagHolder = null;
             gameState.flagCapture.holdStartTime = 0;
+
+            // Reset AI flag running state when flag is dropped
+            if (fromPlayer === 'player2') {
+                this.aiFlagRunning = null;
+            }
 
             const playerName = fromPlayer === 'player1' ? 'Player 1' : 'Player 2';
             console.log(`${playerName} dropped the flag!`);
@@ -2887,11 +2983,11 @@
 
                 // Award coins to both players
                 if (gameState.gameMode === 'multiplayer') {
-                    gameState.player1Coins += totalReward;
-                    gameState.player2Coins += totalReward;
+                    gameState.player1Coins = safeCoins(gameState.player1Coins + totalReward);
+                    gameState.player2Coins = safeCoins(gameState.player2Coins + totalReward);
                     console.log(`💰 Both players earn ${totalReward} coins!`);
                 } else {
-                    gameState.coins += totalReward;
+                    gameState.coins = safeCoins(gameState.coins + totalReward);
                     console.log(`💰 Player earns ${totalReward} coins!`);
                 }
 
@@ -2922,10 +3018,10 @@
                 // Small penalty for losing
                 const penalty = 25;
                 if (gameState.gameMode === 'multiplayer') {
-                    gameState.player1Coins = Math.max(0, gameState.player1Coins - penalty);
-                    gameState.player2Coins = Math.max(0, gameState.player2Coins - penalty);
+                    gameState.player1Coins = safeCoins(gameState.player1Coins - penalty);
+                    gameState.player2Coins = safeCoins(gameState.player2Coins - penalty);
                 } else {
-                    gameState.coins = Math.max(0, gameState.coins - penalty);
+                    gameState.coins = safeCoins(gameState.coins - penalty);
                 }
 
                 setTimeout(() => {
@@ -3054,7 +3150,7 @@
             
             if (gameState.gameMode === 'multiplayer') {
                 if (winner.includes('Player 1')) {
-                    gameState.player1Coins += player1Coins;
+                    gameState.player1Coins = safeCoins(gameState.player1Coins + player1Coins);
                     gameState.player1Trophies += player1Trophies;
                     if (timeRemainingSeconds > 0) {
                         gameState.player2Trophies = Math.max(0, gameState.player2Trophies - timeRemainingSeconds); // Lose trophies equal to time lost by
@@ -3062,7 +3158,7 @@
                     coinsMessage = `Player 1: +${player1Coins} coins\n(${player1HP} HP - ${player2HP} HP = ${player1Coins} coins)`;
                     trophyMessage = `🏆 Player 1: +${player1Trophies} trophies (${timeRemainingSeconds}s left)\n🏆 Player 2: -${timeRemainingSeconds} trophies`;
                 } else if (winner.includes('Player 2')) {
-                    gameState.player2Coins += player2Coins;
+                    gameState.player2Coins = safeCoins(gameState.player2Coins + player2Coins);
                     gameState.player2Trophies += player2Trophies;
                     if (timeRemainingSeconds > 0) {
                         gameState.player1Trophies = Math.max(0, gameState.player1Trophies - timeRemainingSeconds);
@@ -3079,7 +3175,7 @@
             } else {
                 // Single player mode
                 if (winner.includes('Player 1')) {
-                    gameState.coins += player1Coins;
+                    gameState.coins = safeCoins(gameState.coins + player1Coins);
                     gameState.trophies += player1Trophies;
                     coinsMessage = `+${player1Coins} coins earned!\n(${player1HP} HP - ${player2HP} HP = ${player1Coins} coins)`;
                     trophyMessage = `🏆 +${player1Trophies} trophies earned! (${timeRemainingSeconds}s left)`;
@@ -3099,13 +3195,39 @@
         handleGameEnd(winner, player1Coins, player2Coins, player1Trophies, player2Trophies) {
             this.gameRunning = false;
 
+            // Track challenge progress for battle outcome
+            if (winner.includes('Player 1')) {
+                // Player 1 won - track the win
+                trackChallengeProgress('battle_won', {
+                    timeRemaining: Math.ceil(this.timeLeft / 1000),
+                    playerHP: this.player1.health,
+                    playerMaxHP: this.player1.maxHealth,
+                    damageTaken: this.player1.maxHealth - this.player1.health,
+                    enemyHP: this.player2.maxHealth,
+                    trophiesEarned: player1Trophies,
+                    character: gameState.selectedCharacter,
+                    rarity: characters[gameState.selectedCharacter]?.rarity || 'common',
+                    enemyRarity: characters[gameState.selectedPlayer2Character]?.rarity || 'common',
+                    map: gameState.selectedMap,
+                    wasComeback: this.player1.health < this.player1.maxHealth * 0.3 && this.player2.health > this.player2.maxHealth * 0.7
+                });
+            } else if (winner.includes('Player 2')) {
+                // Player 2 won (or CPU won) - track the loss
+                trackChallengeProgress('battle_lost');
+            }
+
             // Award coins and trophies
             if (gameState.gameMode === 'multiplayer') {
                 // Multiplayer mode
-                gameState.player1Coins = Math.max(0, gameState.player1Coins + player1Coins); // Prevent negative coins
-                gameState.player2Coins = Math.max(0, gameState.player2Coins + player2Coins);
+                gameState.player1Coins = safeCoins(gameState.player1Coins + player1Coins);
+                gameState.player2Coins = safeCoins(gameState.player2Coins + player2Coins);
                 gameState.player1Trophies += player1Trophies;
                 gameState.player2Trophies += player2Trophies;
+
+                // Track coins earned for challenges (only positive amounts for Player 1)
+                if (player1Coins > 0) {
+                    trackChallengeProgress('coins_earned', { amount: player1Coins });
+                }
 
                 // Format coin messages to show gains/losses
                 const p1CoinMsg = player1Coins >= 0 ? `+${player1Coins}` : `${player1Coins}`;
@@ -3119,8 +3241,13 @@
                 showNotification(`${winner}\n${coinsMessage}\n${trophyMessage}`);
             } else {
                 // Single player mode
-                gameState.coins = Math.max(0, gameState.coins + player1Coins); // Prevent negative coins
+                gameState.coins = safeCoins(gameState.coins + player1Coins);
                 gameState.trophies += player1Trophies;
+
+                // Track coins earned for challenges (only positive amounts)
+                if (player1Coins > 0) {
+                    trackChallengeProgress('coins_earned', { amount: player1Coins });
+                }
 
                 // Format coin message to show gains/losses
                 const coinMsg = player1Coins >= 0 ? `+${player1Coins} coins earned!` : `${player1Coins} coins lost!`;
@@ -3139,6 +3266,27 @@
             const data = gameState.tournamentData;
             const currentRoundName = data.roundNames[data.currentRound];
             const series = data.currentSeries;
+
+            // Track challenge progress for tournament battles
+            if (winner.includes('Player 1')) {
+                // Player won - track the win
+                trackChallengeProgress('battle_won', {
+                    timeRemaining: Math.ceil(this.timeLeft / 1000),
+                    playerHP: this.player1.health,
+                    playerMaxHP: this.player1.maxHealth,
+                    damageTaken: this.player1.maxHealth - this.player1.health,
+                    enemyHP: this.player2.maxHealth,
+                    trophiesEarned: 0, // Tournaments don't award trophies per battle
+                    character: gameState.selectedCharacter,
+                    rarity: characters[gameState.selectedCharacter]?.rarity || 'common',
+                    enemyRarity: characters[gameState.selectedPlayer2Character]?.rarity || 'common',
+                    map: gameState.selectedMap,
+                    wasComeback: this.player1.health < this.player1.maxHealth * 0.3 && this.player2.health > this.player2.maxHealth * 0.7
+                });
+            } else {
+                // Player lost - track the loss
+                trackChallengeProgress('battle_lost');
+            }
 
             // Update series score
             if (winner.includes('Player 1')) {
@@ -3165,13 +3313,13 @@
                     // Tournament completed! Award prize
                     if (gameState.gameMode === 'multiplayer') {
                         if (gameState.currentShopPlayer === 1) {
-                            gameState.player1Coins += data.prizePool;
+                            gameState.player1Coins = safeCoins(gameState.player1Coins + data.prizePool);
                         } else {
-                            gameState.player2Coins += data.prizePool;
+                            gameState.player2Coins = safeCoins(gameState.player2Coins + data.prizePool);
                         }
                         updateMultiplayerCoinsDisplay();
                     } else {
-                        gameState.coins += data.prizePool;
+                        gameState.coins = safeCoins(gameState.coins + data.prizePool);
                         updateSinglePlayerCoinsDisplay();
                     }
 
@@ -3229,6 +3377,27 @@
             const currentPlayerData = data.currentPlayer === 1 ? data.player1 : data.player2;
             const series = currentPlayerData.currentSeries;
             const currentRoundName = data.roundNames[data.currentRound];
+
+            // Track challenge progress for 2-player tournament battles
+            if (winner.includes('Player 1')) {
+                // Player won - track the win
+                trackChallengeProgress('battle_won', {
+                    timeRemaining: Math.ceil(this.timeLeft / 1000),
+                    playerHP: this.player1.health,
+                    playerMaxHP: this.player1.maxHealth,
+                    damageTaken: this.player1.maxHealth - this.player1.health,
+                    enemyHP: this.player2.maxHealth,
+                    trophiesEarned: 0,
+                    character: gameState.selectedCharacter,
+                    rarity: characters[gameState.selectedCharacter]?.rarity || 'common',
+                    enemyRarity: characters[gameState.selectedPlayer2Character]?.rarity || 'common',
+                    map: gameState.selectedMap,
+                    wasComeback: this.player1.health < this.player1.maxHealth * 0.3 && this.player2.health > this.player2.maxHealth * 0.7
+                });
+            } else {
+                // Player lost - track the loss
+                trackChallengeProgress('battle_lost');
+            }
 
             // Handle final match (Player vs Player)
             if (data.finalMatch) {
@@ -3324,17 +3493,47 @@
 
             // FLAG CAPTURE MODE AI - Prioritize flag-related actions!
             if (this.isFlagCaptureMode) {
-                // If player has the flag, chase them aggressively!
+                // If player has the flag, chase them while maintaining safe distance!
                 if (gameState.flagCapture.flagHolder === 'player1') {
-                    // AI chasing flag holder
+                    // AI chasing flag holder - KEEP DISTANCE, DON'T CROSS HITBOX
 
-                    // Move towards player aggressively
-                    if (dx > 20) {
-                        this.player2.x += this.player2.getMovementSpeed() * 1.2; // 20% faster when chasing flag
-                        this.player2.direction = 1;
-                    } else if (dx < -20) {
-                        this.player2.x -= this.player2.getMovementSpeed() * 1.2;
-                        this.player2.direction = -1;
+                    // Calculate safe attack distance (outside player's hitbox)
+                    const playerHitboxRadius = Math.min(this.player1.width, this.player1.height) / 3;
+                    const aiHitboxRadius = Math.min(this.player2.width, this.player2.height) / 3;
+                    const safeDistance = playerHitboxRadius + aiHitboxRadius + 30; // Extra 30px buffer
+                    const attackRange = safeDistance + 50; // Attack from 50px beyond safe distance
+
+                    // Move towards player but stop at safe distance
+                    if (distance > attackRange) {
+                        // Too far - move closer
+                        if (dx > 0) {
+                            this.player2.x += this.player2.getMovementSpeed() * 1.2; // 20% faster when chasing flag
+                            this.player2.direction = 1;
+                        } else {
+                            this.player2.x -= this.player2.getMovementSpeed() * 1.2;
+                            this.player2.direction = -1;
+                        }
+                    } else if (distance < safeDistance) {
+                        // Too close - back away to avoid crossing hitbox
+                        if (dx > 0) {
+                            this.player2.x -= this.player2.getMovementSpeed() * 1.5; // Back away faster
+                            this.player2.direction = 1; // Still face the player
+                        } else {
+                            this.player2.x += this.player2.getMovementSpeed() * 1.5;
+                            this.player2.direction = -1;
+                        }
+                        console.log('🛡️ AI backing away to maintain distance');
+                    } else {
+                        // Perfect distance - circle around player
+                        // Face the player
+                        this.player2.direction = dx > 0 ? 1 : -1;
+
+                        // Strafe/circle movement
+                        if (Math.random() < 0.5) {
+                            // Move slightly to maintain optimal attack position
+                            const strafeDirection = Math.random() < 0.5 ? 1 : -1;
+                            this.player2.x += this.player2.getMovementSpeed() * 0.5 * strafeDirection;
+                        }
                     }
 
                     // Jump to reach player if they're above
@@ -3342,55 +3541,95 @@
                         this.player2.jump();
                     }
 
-                    // Attack if close enough to steal flag
-                    if (distance < 80) {
-                        if (Math.random() < 0.8) { // 80% chance to attack when close
+                    // Attack from safe distance to steal flag
+                    if (distance >= safeDistance && distance <= attackRange + 30) {
+                        if (Math.random() < 0.7) { // 70% chance to attack when in range
                             this.player2.normalAttack();
                         }
                     }
 
-                    // Use special attack if close enough to stun
-                    if (distance < 100 && Math.random() < 0.3) { // 30% chance for special attack
+                    // Use special attack from safe distance to stun
+                    if (distance >= safeDistance && distance <= attackRange + 50 && Math.random() < 0.25) { // 25% chance for special attack
                         this.player2.specialAttack();
                     }
 
                     return; // Skip normal AI behavior when chasing flag holder
                 }
 
-                // If AI has the flag, try to avoid player
+                // If AI has the flag, RUN AROUND THE MAP!
                 if (gameState.flagCapture.flagHolder === 'player2') {
-                    // AI avoiding player while holding flag
-
-                    // Move away from player
-                    if (dx > 0) {
-                        this.player2.x -= this.player2.getMovementSpeed() * 1.1; // 10% faster when fleeing
-                        this.player2.direction = -1;
-                    } else {
-                        this.player2.x += this.player2.getMovementSpeed() * 1.1;
-                        this.player2.direction = 1;
+                    // Initialize AI flag running state if not exists
+                    if (!this.aiFlagRunning) {
+                        this.aiFlagRunning = {
+                            targetX: null,
+                            lastChangeTime: Date.now(),
+                            changeInterval: 2000, // Change direction every 2 seconds
+                            runSpeed: 1.3 // 30% faster when running with flag
+                        };
                     }
 
-                    // Jump to escape if player is close
-                    if (distance < 100 && this.player2.onGround) {
+                    const currentTime = Date.now();
+                    const timeSinceLastChange = currentTime - this.aiFlagRunning.lastChangeTime;
+
+                    // Change target position every 2 seconds or if reached target
+                    if (timeSinceLastChange >= this.aiFlagRunning.changeInterval ||
+                        this.aiFlagRunning.targetX === null ||
+                        Math.abs(this.player2.x - this.aiFlagRunning.targetX) < 30) {
+
+                        // Pick a random position on the map to run to
+                        const mapWidth = this.canvas.width;
+                        const minX = 50;
+                        const maxX = mapWidth - 50;
+
+                        // Generate new random target far from current position
+                        let newTargetX;
+                        do {
+                            newTargetX = Math.random() * (maxX - minX) + minX;
+                        } while (Math.abs(newTargetX - this.player2.x) < 200); // Ensure it's far enough
+
+                        this.aiFlagRunning.targetX = newTargetX;
+                        this.aiFlagRunning.lastChangeTime = currentTime;
+
+                        console.log(`🏃 AI running to new position: ${Math.round(newTargetX)}`);
+                    }
+
+                    // Run towards target position
+                    const targetDx = this.aiFlagRunning.targetX - this.player2.x;
+
+                    if (targetDx > 20) {
+                        this.player2.x += this.player2.getMovementSpeed() * this.aiFlagRunning.runSpeed;
+                        this.player2.direction = 1;
+                    } else if (targetDx < -20) {
+                        this.player2.x -= this.player2.getMovementSpeed() * this.aiFlagRunning.runSpeed;
+                        this.player2.direction = -1;
+                    }
+
+                    // Jump frequently while running to be harder to catch
+                    if (this.player2.onGround && Math.random() < 0.15) { // 15% chance to jump each frame
+                        this.player2.jump();
+                    }
+
+                    // Also jump if player is getting close
+                    if (distance < 150 && this.player2.onGround && Math.random() < 0.3) {
                         this.player2.jump();
                     }
 
                     return; // Skip normal AI behavior when holding flag
                 }
 
-                // If flag is available, go for it!
+                // If flag is available, GO FOR IT AGGRESSIVELY!
                 if (gameState.flagCapture.flag && !gameState.flagCapture.flagHolder) {
                     const flagDx = gameState.flagCapture.flag.x - this.player2.x;
                     const flagDistance = Math.abs(flagDx);
 
-                    // AI going for flag
+                    // AI going for flag - PRIORITIZE THIS!
 
-                    // Move towards flag
+                    // Move towards flag at full speed
                     if (flagDx > 20) {
-                        this.player2.x += this.player2.getMovementSpeed();
+                        this.player2.x += this.player2.getMovementSpeed() * 1.2; // 20% faster when going for flag
                         this.player2.direction = 1;
                     } else if (flagDx < -20) {
-                        this.player2.x -= this.player2.getMovementSpeed();
+                        this.player2.x -= this.player2.getMovementSpeed() * 1.2;
                         this.player2.direction = -1;
                     }
 
@@ -3400,10 +3639,13 @@
                         this.player2.jump();
                     }
 
-                    // If close to flag, prioritize it over attacking player
-                    if (flagDistance < 150) {
-                        return; // Skip normal AI behavior when close to flag
+                    // Jump more frequently when close to flag
+                    if (flagDistance < 100 && this.player2.onGround && Math.random() < 0.2) {
+                        this.player2.jump();
                     }
+
+                    // Always prioritize flag over everything else
+                    return; // Skip normal AI behavior when flag is available
                 }
             }
 
@@ -4257,6 +4499,9 @@
             this.isMoving = false;
             this.lastX = x;
 
+            // Item rotation animation
+            this.itemRotation = 0;
+
             // Apply badge bonuses to base stats
             this.applyBadgeBonuses();
         }
@@ -4436,6 +4681,22 @@
 
             // CRITICAL FIX: Update item effects every frame!
             this.updateItemEffects();
+
+            // Update item rotation animation
+            if (this.heldItem) {
+                // Initialize itemRotation if not set
+                if (this.itemRotation === undefined || isNaN(this.itemRotation)) {
+                    this.itemRotation = 0;
+                    console.log(`${this.char.name} initialized item rotation for ${this.heldItem.name}`);
+                }
+                this.itemRotation += 0.15; // Rotate at constant speed (faster for visibility)
+                if (this.itemRotation >= Math.PI * 2) {
+                    this.itemRotation -= Math.PI * 2; // Keep it in range
+                }
+            } else {
+                // Reset rotation when no item
+                this.itemRotation = 0;
+            }
         }
 
         checkPlatformCollisions() {
@@ -4553,6 +4814,65 @@
 
             // Draw status effect indicators
             this.drawStatusEffects(ctx, centerX, centerY);
+
+            // Draw held item rotating around player
+            this.drawHeldItem(ctx, centerX, centerY);
+        }
+
+        drawHeldItem(ctx, centerX, centerY) {
+            if (!this.heldItem) {
+                return;
+            }
+
+            // Initialize itemRotation if not set
+            if (this.itemRotation === undefined || isNaN(this.itemRotation)) {
+                this.itemRotation = 0;
+            }
+
+            // Debug: Log once per second
+            if (!this.lastDrawLog || Date.now() - this.lastDrawLog > 1000) {
+                console.log(`Drawing ${this.char.name}'s held item: ${this.heldItem.name} ${this.heldItem.emoji}, rotation: ${this.itemRotation.toFixed(2)}`);
+                this.lastDrawLog = Date.now();
+            }
+
+            // Calculate position of item rotating around player
+            const orbitRadius = 70; // Distance from player center (increased for better visibility)
+
+            ctx.save();
+
+            // Draw orbit circle (more visible)
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)'; // More visible gold circle
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 5]); // Dashed line
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, orbitRadius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset dash
+
+            // Draw 50 duplicate emojis around the orbit
+            const numDuplicates = 50;
+            const angleStep = (Math.PI * 2) / numDuplicates;
+
+            for (let i = 0; i < numDuplicates; i++) {
+                const angle = this.itemRotation + (i * angleStep);
+                const itemX = centerX + Math.cos(angle) * orbitRadius;
+                const itemY = centerY + Math.sin(angle) * orbitRadius;
+
+                // Vary size slightly for depth effect
+                const sizeVariation = 1 + Math.sin(angle * 2) * 0.15;
+                const fontSize = Math.floor(28 * sizeVariation);
+
+                // Add glow effect
+                ctx.shadowColor = '#FFD700';
+                ctx.shadowBlur = 15;
+                ctx.font = `bold ${fontSize}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText(this.heldItem.emoji, itemX, itemY);
+            }
+
+            ctx.restore();
         }
 
         drawStatusEffects(ctx, centerX, centerY) {
@@ -4898,6 +5218,14 @@
                         case 'powerBoost':
                             damageMultiplier *= effect.data.multiplier || 1.0;
                             break;
+                        case 'magicBoost':
+                            // Magic damage boost
+                            flatDamageBonus += effect.data.amount || 0;
+                            break;
+                        case 'heavyWeapon':
+                            // Heavy weapon damage boost
+                            flatDamageBonus += effect.data.damage || 0;
+                            break;
                         case 'allPowers':
                             // All powers activated - massive boost
                             damageMultiplier *= 2.0;
@@ -5136,6 +5464,11 @@
             this.canSpecialAttack = false;
             this.specialCooldown = this.specialMaxCooldown;
 
+            // Track special attack usage for challenges (only for Player 1)
+            if (this === gameState.battle?.player1) {
+                trackChallengeProgress('special_used');
+            }
+
             // Add stronger screen shake for special attack
             if (gameState.battle) {
                 gameState.battle.addScreenShake(8, 25);
@@ -5189,7 +5522,8 @@
 
                 switch(badge.effect) {
                     case 'defense':
-                        flatReduction += badge.value;
+                        // Defense badges now use percentage reduction
+                        percentageReduction += badge.value;
                         break;
                     case 'guardian':
                         percentageReduction += badge.value;
@@ -5201,8 +5535,8 @@
                         }
                         break;
                     case 'tank':
-                        // Tank badges provide flat reduction
-                        flatReduction += Math.floor(badge.value / 10); // Convert HP bonus to defense
+                        // Tank badges provide percentage reduction based on HP bonus
+                        percentageReduction += Math.floor(badge.value / 20); // 20 HP = 1% defense
                         break;
                 }
             });
@@ -5212,7 +5546,8 @@
                 this.activeEffects.forEach(effect => {
                     switch(effect.type) {
                         case 'defenseBoost':
-                            flatReduction += effect.data.amount || 0;
+                            // Defense items provide percentage reduction
+                            percentageReduction += effect.data.amount || 0;
                             break;
                         case 'shielded':
                             percentageReduction += effect.data.reduction || 0;
@@ -5235,10 +5570,15 @@
             // Round to nearest integer
             finalDamage = Math.round(finalDamage);
 
-            // 4. LIFESTEAL CALCULATION (for the attacker)
+            // 4. TRACK DAMAGE FOR CHALLENGES (only for Player 1 dealing damage)
+            if (attacker && attacker === gameState.battle?.player1 && this !== gameState.battle?.player1) {
+                trackChallengeProgress('damage_dealt', { damage: finalDamage });
+            }
+
+            // 5. LIFESTEAL CALCULATION (for the attacker)
             // Note: This would need to be called from the attacker's side, but we'll track it here for logging
 
-            // 5. FLAG CAPTURE MODE - Handle flag stealing
+            // 6. FLAG CAPTURE MODE - Handle flag stealing
             if (gameState.battle && gameState.battle.isFlagCaptureMode && !dodged && attacker) {
                 const attackedPlayer = this === gameState.battle.player1 ? 'player1' : 'player2';
                 const attackingPlayer = attacker === gameState.battle.player1 ? 'player1' : 'player2';
@@ -5338,13 +5678,17 @@
                 case 'ultimate':
                 case 'cosmic':
                 case 'omega':
-                    // EXPLOSIVE DAMAGE - Massive damage boost!
-                    this.addTimedEffect('damageBoost', {
-                        amount: itemData.damage || 80,
-                        duration: itemData.duration || 8000,
-                        name: itemData.name
-                    });
-                    console.log(`${this.char.name} gains EXPLOSIVE +${itemData.damage || 80} damage!`);
+                    // EXPLOSIVE DAMAGE - Instant explosion damage to enemy!
+                    const explosiveTarget = this === gameState.battle.player1 ? gameState.battle.player2 : gameState.battle.player1;
+                    const explosiveDamage = itemData.damage || 80;
+
+                    // Deal instant damage
+                    explosiveTarget.takeDamage(explosiveDamage, this);
+
+                    // Create massive explosion animation
+                    this.createExplosionEffect(explosiveTarget);
+
+                    console.log(`💥 EXPLOSION! ${itemData.name} deals ${explosiveDamage} damage to ${explosiveTarget.char.name}!`);
                     break;
                     
                 case 'defense':
@@ -5569,10 +5913,16 @@
                     break;
 
                 case 'global':
-                    // Earthquake - global damage
+                    // Global damage - affects enemy with massive area damage (Earthquake)
                     const globalTarget = this === gameState.battle.player1 ? gameState.battle.player2 : gameState.battle.player1;
-                    globalTarget.takeDamage(itemData.damage || 80);
-                    console.log(`🌍 EARTHQUAKE strikes ${globalTarget.char.name} for ${itemData.damage || 80} damage!`);
+                    const globalDamage = itemData.damage || 80;
+                    globalTarget.takeDamage(globalDamage);
+                    console.log(`🌍 GLOBAL EFFECT: ${itemData.name} hits ${globalTarget.char.name} for ${globalDamage} damage!`);
+
+                    // Add screen shake for global effects
+                    if (gameState.battle) {
+                        gameState.battle.addScreenShake(15, 500);
+                    }
                     break;
 
                 default:
@@ -5744,11 +6094,79 @@
             console.log(`⚡ LIGHTNING STRIKES ${target.char.name}!`);
         }
 
+        createExplosionEffect(target) {
+            if (!gameState.battle) return;
+
+            const targetCenterX = target.x + target.width / 2;
+            const targetCenterY = target.y + target.height / 2;
+
+            // Create massive screen shake
+            gameState.battle.addScreenShake(25, 800);
+
+            // Create expanding explosion rings
+            for (let ring = 0; ring < 5; ring++) {
+                setTimeout(() => {
+                    // Create explosion ring particles
+                    const particleCount = 30;
+                    const ringRadius = 30 + (ring * 20);
+
+                    for (let i = 0; i < particleCount; i++) {
+                        const angle = (Math.PI * 2 * i) / particleCount;
+                        const startX = targetCenterX + Math.cos(angle) * ringRadius;
+                        const startY = targetCenterY + Math.sin(angle) * ringRadius;
+
+                        // Explosion particles
+                        gameState.battle.addVisualEffect('explosion_particle',
+                            startX,
+                            startY,
+                            {
+                                life: 40 - (ring * 5),
+                                velocityX: Math.cos(angle) * (4 + ring),
+                                velocityY: Math.sin(angle) * (4 + ring),
+                                size: 8 - ring,
+                                color: ring % 2 === 0 ? '#FF4500' : '#FFA500'
+                            }
+                        );
+                    }
+
+                    // Create fire particles
+                    for (let i = 0; i < 15; i++) {
+                        gameState.battle.addVisualEffect('fire_particle',
+                            targetCenterX + (Math.random() - 0.5) * 60,
+                            targetCenterY + (Math.random() - 0.5) * 60,
+                            {
+                                life: 30,
+                                velocityX: (Math.random() - 0.5) * 6,
+                                velocityY: (Math.random() - 0.5) * 6 - 2,
+                                size: 6 + Math.random() * 4
+                            }
+                        );
+                    }
+                }, ring * 50); // Stagger the rings
+            }
+
+            // Create central flash
+            gameState.battle.addVisualEffect('explosion_flash',
+                targetCenterX,
+                targetCenterY,
+                {
+                    life: 20,
+                    maxSize: 150
+                }
+            );
+
+            console.log(`💥 MASSIVE EXPLOSION at ${target.char.name}!`);
+        }
+
         pickupItem(item) {
             // Store the item for later use
             this.heldItem = item;
-            console.log(`${this.char.name} picks up ${item.name}!`);
-            
+
+            // Initialize rotation immediately
+            this.itemRotation = 0;
+
+            console.log(`${this.char.name} picks up ${item.name}! Item will now spin around player.`);
+
             // Show pickup notification WITH DESCRIPTION
             const description = this.getEffectDescription(item.data);
             showNotification(`${this.char.name} picked up:\n${item.emoji} ${item.name}!\n\n📝 DESCRIPTION:\n${description}\n\nPress ${this === gameState.battle.player1 ? 'Q' : 'Enter'} to use!`);
@@ -6156,24 +6574,8 @@
         });
         
         container.appendChild(challengesGrid);
-        
-        // Add completion stats
-        const statsSection = document.createElement('div');
-        statsSection.style.cssText = 'margin-top: 30px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 15px;';
-        statsSection.innerHTML = `
-            <div style="text-align: center; color: #FFD700; font-size: 18px; font-weight: bold; margin-bottom: 15px;">
-                📊 Challenge Statistics
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; font-size: 14px;">
-                <div>⚔️ Total Damage: ${gameState.challengeStats?.totalDamage || 0}</div>
-                <div>💥 Special Uses: ${gameState.challengeStats?.specialUses || 0}</div>
-                <div>🔥 Win Streak: ${gameState.challengeStats?.currentWinStreak || 0}</div>
-                <div>🎭 Characters Used: ${gameState.challengeStats?.charactersUsed?.size || 0}</div>
-                <div>🏆 Trophies Earned: ${gameState.challengeStats?.trophiesEarned || 0}</div>
-                <div>📦 Chests Opened: ${gameState.challengeStats?.chestsOpened || 0}</div>
-            </div>
-        `;
-        container.appendChild(statsSection);
+
+        // Challenge statistics section removed per user request
     }
 
     function showBadges() {
@@ -6377,18 +6779,22 @@
 
     // Badge chest buying function
     function buyBadgeChest(chestType) {
-        const chestPrices = { 
+        const chestPrices = {
             'common_badge': 100,
             'rare_badge': 200,
-            'mega_badge': 400,
-            'guaranteed_legendary_badge': 800,
+            'epic_badge': 350,
+            'legendary_badge': 500,
+            'mega_badge': 600,
+            'guaranteed_legendary_badge': 1000,
             'choose_badge': 1200
         };
-        
+
         const chestRarities = {
             'common_badge': { common: 0.80, rare: 0.15, epic: 0.04, legendary: 0.01 },
             'rare_badge': { common: 0.50, rare: 0.35, epic: 0.13, legendary: 0.02 },
-            'mega_badge': { common: 0.40, rare: 0.35, epic: 0.20, legendary: 0.05 },
+            'epic_badge': { common: 0.30, rare: 0.30, epic: 0.30, legendary: 0.10 },
+            'legendary_badge': { common: 0.20, rare: 0.20, epic: 0.20, legendary: 0.40 },
+            'mega_badge': { common: 0.45, rare: 0.35, epic: 0.17, legendary: 0.03 },
             'guaranteed_legendary_badge': { common: 0.00, rare: 0.00, epic: 0.00, legendary: 1.00 }
         };
         
@@ -6426,13 +6832,13 @@
         // Deduct coins
         if (gameState.gameMode === 'multiplayer') {
             if (gameState.currentShopPlayer === 1) {
-                gameState.player1Coins -= price;
+                gameState.player1Coins = safeCoins(gameState.player1Coins - price);
             } else {
-                gameState.player2Coins -= price;
+                gameState.player2Coins = safeCoins(gameState.player2Coins - price);
             }
             updateMultiplayerCoinsDisplay();
         } else {
-            gameState.coins -= price;
+            gameState.coins = safeCoins(gameState.coins - price);
             updateSinglePlayerCoinsDisplay();
         }
         
@@ -6475,6 +6881,7 @@
         // Track challenge progress
         trackChallengeProgress('chest_opened', { type: 'badge' });
         trackChallengeProgress('badge_collected', { rarity: badges[newBadges[0]].rarity });
+        trackChallengeProgress('coins_spent', { amount: price });
         
         // Show badge chest animation (create one for badges)
         showBadgeChestAnimation(newBadges, chestType);
@@ -6847,6 +7254,9 @@
         console.log('Enemy character:', enemyChar);
         console.log('Selected map:', gameState.selectedMap);
 
+        // Track battle started for challenges
+        trackChallengeProgress('battle_started');
+
         showScreen('battleScreen');
         console.log('Battle screen shown');
 
@@ -6872,12 +7282,131 @@
         gameState.selectedPlayer2Character = null;
         gameState.selectedMap = null;
 
-        // If in tournament mode, show tournament screen, otherwise show main menu
-        if (gameState.tournamentMode && gameState.tournamentData.isActive) {
-            showTournamentSelect();
-        } else {
-            showMainMenu();
+        // Show loading screen and check for completed challenges
+        showLoadingScreen('battle', () => {
+            // After loading screen, show appropriate screen
+            if (gameState.tournamentMode && gameState.tournamentData.isActive) {
+                showTournamentSelect();
+            } else {
+                showMainMenu();
+            }
+        });
+    }
+
+    // LOADING SCREEN WITH CHALLENGE CHECK
+    function showLoadingScreen(source, callback) {
+        const loadingScreen = document.getElementById('loadingScreen');
+        const loadingTitle = document.getElementById('loadingTitle');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const challengeContainer = document.getElementById('challengeCompletionContainer');
+
+        // Show loading screen
+        loadingScreen.style.display = 'flex';
+        loadingTitle.textContent = 'Loading...';
+        loadingMessage.textContent = 'Checking for completed challenges...';
+        challengeContainer.innerHTML = '';
+
+        // Check for completed challenges after a short delay
+        setTimeout(() => {
+            const completedChallenges = checkCompletedChallenges();
+
+            if (completedChallenges.length > 0) {
+                // Show completed challenges
+                loadingTitle.textContent = '🎉 CHALLENGES COMPLETED! 🎉';
+                loadingMessage.textContent = `You completed ${completedChallenges.length} challenge${completedChallenges.length > 1 ? 's' : ''}!`;
+
+                completedChallenges.forEach((challenge, index) => {
+                    setTimeout(() => {
+                        const card = document.createElement('div');
+                        card.className = 'challenge-completion-card';
+                        card.innerHTML = `
+                            <div style="font-size: 48px; margin-bottom: 10px;">${challenge.emoji}</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #FFD700; margin-bottom: 10px;">${challenge.name}</div>
+                            <div style="font-size: 18px; color: #FFF; margin-bottom: 15px;">${challenge.description}</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #FFD700;">
+                                💰 Reward: ${challenge.reward} coins
+                            </div>
+                        `;
+                        challengeContainer.appendChild(card);
+                    }, index * 300); // Stagger the animations
+                });
+
+                // Wait longer before continuing
+                setTimeout(() => {
+                    hideLoadingScreen(callback);
+                }, 2000 + (completedChallenges.length * 300));
+            } else {
+                // No challenges completed
+                loadingMessage.textContent = 'No new challenges completed.';
+                setTimeout(() => {
+                    hideLoadingScreen(callback);
+                }, 1000);
+            }
+        }, 500);
+    }
+
+    function hideLoadingScreen(callback) {
+        const loadingScreen = document.getElementById('loadingScreen');
+        loadingScreen.style.animation = 'fadeOut 0.3s ease-out';
+
+        setTimeout(() => {
+            loadingScreen.style.display = 'none';
+            loadingScreen.style.animation = '';
+            if (callback) callback();
+        }, 300);
+    }
+
+    function checkCompletedChallenges() {
+        const completedChallenges = [];
+
+        // Initialize challenges if not exists
+        if (!gameState.challenges) {
+            gameState.challenges = [];
         }
+        if (!gameState.completedChallenges) {
+            gameState.completedChallenges = [];
+        }
+
+        // Get current challenges based on game mode
+        let challenges = gameState.challenges || [];
+
+        challenges.forEach((challenge, index) => {
+            // Check if challenge is completed and claimed (ready to show in loading screen)
+            if (challenge && challenge.claimed) {
+                // Award coins
+                if (gameState.gameMode === 'multiplayer') {
+                    // Award to both players in multiplayer
+                    gameState.player1Coins = safeCoins(gameState.player1Coins + challenge.reward);
+                    gameState.player2Coins = safeCoins(gameState.player2Coins + challenge.reward);
+                    updateMultiplayerCoinsDisplay();
+                } else {
+                    gameState.coins = safeCoins(gameState.coins + challenge.reward);
+                    updateSinglePlayerCoinsDisplay();
+                }
+
+                completedChallenges.push(challenge);
+
+                console.log(`✅ Challenge completed: ${challenge.name} - Reward: ${challenge.reward} coins`);
+            }
+        });
+
+        // Remove completed challenges from active list and generate new ones
+        const numCompleted = completedChallenges.length;
+        gameState.challenges = gameState.challenges.filter(c => c && !c.claimed);
+
+        // Generate new challenges to replace completed ones
+        for (let i = 0; i < numCompleted; i++) {
+            generateNewChallenge();
+        }
+
+        return completedChallenges;
+    }
+
+    // Return to main menu with loading screen and challenge check
+    function returnToMainMenuWithLoading(source) {
+        showLoadingScreen(source, () => {
+            showMainMenu();
+        });
     }
 
     // BADGES SYSTEM - Define badge types and effects
@@ -6888,7 +7417,7 @@
         'speed_boost_1': { name: 'Quick Feet', emoji: '👟', rarity: 'common', effect: 'speed', value: 1, description: '+1 Movement Speed' },
         'reload_boost_1': { name: 'Fast Hands', emoji: '⚡', rarity: 'common', effect: 'reload', value: 0.1, description: '-10% Reload Time' },
         'special_boost_1': { name: 'Power Focus', emoji: '💥', rarity: 'common', effect: 'special_damage', value: 5, description: '+5 Special Damage' },
-        'defense_1': { name: 'Armor Plate', emoji: '🛡️', rarity: 'common', effect: 'defense', value: 2, description: '-2 Damage Taken' },
+        'defense_1': { name: 'Armor Plate', emoji: '🛡️', rarity: 'common', effect: 'defense', value: 3, description: '-3% Damage Taken' },
         'critical_1': { name: 'Lucky Strike', emoji: '🎯', rarity: 'common', effect: 'critical', value: 5, description: '+5% Critical Chance' },
         'lifesteal_1': { name: 'Vampire Touch', emoji: '🩸', rarity: 'common', effect: 'lifesteal', value: 3, description: '+3% Lifesteal' },
         'dodge_1': { name: 'Nimble Step', emoji: '💨', rarity: 'common', effect: 'dodge', value: 5, description: '+5% Dodge Chance' },
@@ -6899,7 +7428,7 @@
         'speed_boost_2': { name: 'Swift Legs', emoji: '👟', rarity: 'common', effect: 'speed', value: 2, description: '+2 Movement Speed' },
         'reload_boost_2': { name: 'Quick Draw', emoji: '⚡', rarity: 'common', effect: 'reload', value: 0.15, description: '-15% Reload Time' },
         'special_boost_2': { name: 'Power Surge', emoji: '💥', rarity: 'common', effect: 'special_damage', value: 8, description: '+8 Special Damage' },
-        'defense_2': { name: 'Chain Mail', emoji: '🛡️', rarity: 'common', effect: 'defense', value: 3, description: '-3 Damage Taken' },
+        'defense_2': { name: 'Chain Mail', emoji: '🛡️', rarity: 'common', effect: 'defense', value: 5, description: '-5% Damage Taken' },
         'critical_2': { name: 'Sharp Eye', emoji: '🎯', rarity: 'common', effect: 'critical', value: 8, description: '+8% Critical Chance' },
         'lifesteal_2': { name: 'Blood Drain', emoji: '🩸', rarity: 'common', effect: 'lifesteal', value: 5, description: '+5% Lifesteal' },
         'dodge_2': { name: 'Shadow Step', emoji: '💨', rarity: 'common', effect: 'dodge', value: 8, description: '+8% Dodge Chance' },
@@ -6922,7 +7451,7 @@
         'lightning_speed': { name: 'Lightning Speed', emoji: '⚡', rarity: 'rare', effect: 'speed', value: 3, description: '+3 Movement Speed' },
         'master_reload': { name: 'Master Reload', emoji: '🔄', rarity: 'rare', effect: 'reload', value: 0.25, description: '-25% Reload Time' },
         'devastation': { name: 'Devastation', emoji: '💥', rarity: 'rare', effect: 'special_damage', value: 15, description: '+15 Special Damage' },
-        'fortress_armor': { name: 'Fortress Armor', emoji: '🛡️', rarity: 'rare', effect: 'defense', value: 5, description: '-5 Damage Taken' },
+        'fortress_armor': { name: 'Fortress Armor', emoji: '🛡️', rarity: 'rare', effect: 'defense', value: 10, description: '-10% Damage Taken' },
         'death_strike': { name: 'Death Strike', emoji: '💀', rarity: 'rare', effect: 'critical', value: 15, description: '+15% Critical Chance' },
         'vampire_lord': { name: 'Vampire Lord', emoji: '🩸', rarity: 'rare', effect: 'lifesteal', value: 10, description: '+10% Lifesteal' },
         'phantom_dodge': { name: 'Phantom Dodge', emoji: '👻', rarity: 'rare', effect: 'dodge', value: 15, description: '+15% Dodge Chance' },
@@ -6945,7 +7474,7 @@
         'supersonic': { name: 'Supersonic', emoji: '💨', rarity: 'epic', effect: 'speed', value: 5, description: '+5 Movement Speed' },
         'instant_reload': { name: 'Instant Reload', emoji: '⚡', rarity: 'epic', effect: 'reload', value: 0.40, description: '-40% Reload Time' },
         'apocalypse': { name: 'Apocalypse', emoji: '💥', rarity: 'epic', effect: 'special_damage', value: 25, description: '+25 Special Damage' },
-        'invincible_shield': { name: 'Invincible Shield', emoji: '🛡️', rarity: 'epic', effect: 'defense', value: 8, description: '-8 Damage Taken' },
+        'invincible_shield': { name: 'Invincible Shield', emoji: '🛡️', rarity: 'epic', effect: 'defense', value: 18, description: '-18% Damage Taken' },
         'perfect_strike': { name: 'Perfect Strike', emoji: '🎯', rarity: 'epic', effect: 'critical', value: 25, description: '+25% Critical Chance' },
         'soul_reaper': { name: 'Soul Reaper', emoji: '💀', rarity: 'epic', effect: 'lifesteal', value: 18, description: '+18% Lifesteal' },
         'untouchable': { name: 'Untouchable', emoji: '👻', rarity: 'epic', effect: 'dodge', value: 25, description: '+25% Dodge Chance' },
@@ -6963,7 +7492,7 @@
         'reality_speed': { name: 'Reality Speed', emoji: '🌟', rarity: 'legendary', effect: 'speed', value: 8, description: '+8 Movement Speed' },
         'time_stop': { name: 'Time Stop', emoji: '⏸️', rarity: 'legendary', effect: 'reload', value: 0.60, description: '-60% Reload Time' },
         'universe_destroyer': { name: 'Universe Destroyer', emoji: '🌌', rarity: 'legendary', effect: 'special_damage', value: 40, description: '+40 Special Damage' },
-        'absolute_defense': { name: 'Absolute Defense', emoji: '🛡️', rarity: 'legendary', effect: 'defense', value: 12, description: '-12 Damage Taken' },
+        'absolute_defense': { name: 'Absolute Defense', emoji: '🛡️', rarity: 'legendary', effect: 'defense', value: 25, description: '-25% Damage Taken' },
         'divine_judgment': { name: 'Divine Judgment', emoji: '⚖️', rarity: 'legendary', effect: 'critical', value: 40, description: '+40% Critical Chance' },
         'life_dominion': { name: 'Life Dominion', emoji: '💀', rarity: 'legendary', effect: 'lifesteal', value: 25, description: '+25% Lifesteal' },
         'phase_walker': { name: 'Phase Walker', emoji: '👻', rarity: 'legendary', effect: 'dodge', value: 40, description: '+40% Dodge Chance' },
@@ -7026,13 +7555,13 @@
         // Deduct coins
         if (gameState.gameMode === 'multiplayer') {
             if (gameState.currentShopPlayer === 1) {
-                gameState.player1Coins -= price;
+                gameState.player1Coins = safeCoins(gameState.player1Coins - price);
             } else {
-                gameState.player2Coins -= price;
+                gameState.player2Coins = safeCoins(gameState.player2Coins - price);
             }
             updateMultiplayerCoinsDisplay();
         } else {
-            gameState.coins -= price;
+            gameState.coins = safeCoins(gameState.coins - price);
             updateSinglePlayerCoinsDisplay();
         }
         
@@ -7080,12 +7609,16 @@
             }
         }
         
+        // Track challenge progress for chest opening
+        trackChallengeProgress('chest_opened');
+        trackChallengeProgress('coins_spent', { amount: price });
+
         // Debug logging to track the issue
         console.log('Characters selected for chest:', newCharacters);
         newCharacters.forEach((charKey, index) => {
             console.log(`Character ${index + 1}: Key="${charKey}", Name="${characters[charKey].name}"`);
         });
-        
+
         // Show chest opening animation - always pass the actual characters that were unlocked
         showChestAnimation(newCharacters, chestType);
     }
@@ -7535,18 +8068,20 @@
         // Deduct entry fee
         if (gameState.gameMode === 'multiplayer') {
             if (gameState.currentShopPlayer === 1) {
-                gameState.player1Coins -= tournament.entryFee;
+                gameState.player1Coins = safeCoins(gameState.player1Coins - tournament.entryFee);
             } else {
-                gameState.player2Coins -= tournament.entryFee;
+                gameState.player2Coins = safeCoins(gameState.player2Coins - tournament.entryFee);
             }
             updateMultiplayerCoinsDisplay();
         } else {
-            gameState.coins -= tournament.entryFee;
+            gameState.coins = safeCoins(gameState.coins - tournament.entryFee);
             updateSinglePlayerCoinsDisplay();
         }
 
         // Initialize tournament
         gameState.tournamentMode = true;
+        // Force normal battle mode for tournaments
+        gameState.selectedBattleMode = 'normal';
         gameState.tournamentData = {
             type: tournamentType,
             name: tournament.name,
@@ -7576,13 +8111,11 @@
         updateTournamentStatus();
         updateUniversalCoinsDisplay();
 
-        // Start first round
-        showNotification(`🏆 ${tournament.name} Started!\n💰 Entry fee: ${tournament.entryFee} coins paid\n🎯 Prize pool: ${tournament.prizePool} coins\n\nGood luck in the ${tournament.roundNames[0]}!`);
+        // Show tournament screen with start button
+        showNotification(`🏆 ${tournament.name} Started!\n💰 Entry fee: ${tournament.entryFee} coins paid\n🎯 Prize pool: ${tournament.prizePool} coins\n\nClick "Start Round" to begin!`);
 
-        // Proceed to character selection
-        setTimeout(() => {
-            showCharacterSelect();
-        }, 3000);
+        // Stay on tournament screen - user will click "Start Round" button
+        showTournamentSelect();
     }
 
     // Character tier system for tournaments
@@ -7602,6 +8135,16 @@
             characterTier: characterTier,
             generated: true
         };
+    }
+
+    function startTournamentRound() {
+        if (!gameState.tournamentMode || !gameState.tournamentData.isActive) {
+            showNotification('No active tournament!');
+            return;
+        }
+
+        // Proceed to character selection
+        showCharacterSelect();
     }
 
     function updateTournamentStatus() {
@@ -7641,6 +8184,16 @@
                 `;
             }
 
+            // Add Start Round button if series hasn't started yet (no games played)
+            let startRoundButton = '';
+            if (series.gamesPlayed === 0 && !series.playerCharacter) {
+                startRoundButton = `
+                    <button class="button" onclick="startTournamentRound()" style="margin-top: 20px; padding: 15px 30px; font-size: 18px; background: #4CAF50; animation: claimPulse 1.5s ease-in-out infinite;">
+                        🎮 START ROUND - Choose Character
+                    </button>
+                `;
+            }
+
             statusDiv.innerHTML = `
                 <div style="background: rgba(0,0,0,0.2); border-radius: 15px; padding: 20px; border: 3px solid #FFD700;">
                     <h3 style="margin: 0 0 10px 0; color: #FFD700;">🏆 ${data.name} - IN PROGRESS 🏆</h3>
@@ -7652,6 +8205,7 @@
                     <p style="margin: 5px 0; font-size: 16px;">Prize Pool: <strong>${data.prizePool} coins</strong></p>
                     <p style="margin: 5px 0; font-size: 14px; color: #4CAF50;">Character Tier: <strong>${data.characterTier.toUpperCase()}</strong></p>
                     <p style="margin: 10px 0 0 0; color: #FF6B35; font-size: 14px;">⚠️ You must win ALL rounds to claim the prize!</p>
+                    ${startRoundButton}
                     ${generateBracketDisplay(data)}
                 </div>
             `;
@@ -7797,12 +8351,14 @@
         }
 
         // Deduct entry fees from both players
-        gameState.player1Coins -= tournament.entryFee;
-        gameState.player2Coins -= tournament.entryFee;
+        gameState.player1Coins = safeCoins(gameState.player1Coins - tournament.entryFee);
+        gameState.player2Coins = safeCoins(gameState.player2Coins - tournament.entryFee);
         updateMultiplayerCoinsDisplay();
 
         // Initialize 2-player tournament
         gameState.tournament2PlayerMode = true;
+        // Force normal battle mode for tournaments
+        gameState.selectedBattleMode = 'normal';
         gameState.tournament2PlayerData = {
             type: tournamentType,
             name: tournament.name,
@@ -7850,12 +8406,10 @@
         update2PlayerTournamentStatus();
         updateUniversalCoinsDisplay();
 
-        showNotification(`🏆 ${tournament.name} Started!\n\n💰 Entry fees: ${tournament.entryFee} coins each paid\n🎯 Prize pool: ${tournament.prizePool} coins\n\nPlayer 1 starts first!\nBoth players on opposite bracket sides.`);
+        showNotification(`🏆 ${tournament.name} Started!\n\n💰 Entry fees: ${tournament.entryFee} coins each paid\n🎯 Prize pool: ${tournament.prizePool} coins\n\nPlayer 1 starts first!\nClick "Start Round" to begin!`);
 
-        // Start with Player 1
-        setTimeout(() => {
-            start2PlayerRound();
-        }, 4000);
+        // Stay on tournament screen - user will click "Start Round" button
+        showTournamentSelect2Player();
     }
 
     function generate2PlayerBracket(rounds) {
@@ -8011,10 +8565,10 @@
         const data = gameState.tournament2PlayerData;
 
         if (winner === 1) {
-            gameState.player1Coins += data.prizePool;
+            gameState.player1Coins = safeCoins(gameState.player1Coins + data.prizePool);
             showNotification(`🏆 PLAYER 1 WINS THE TOURNAMENT! 🏆\n\n${data.name} Champion!\nPrize Pool: ${data.prizePool} coins awarded to Player 1!`);
         } else if (winner === 2) {
-            gameState.player2Coins += data.prizePool;
+            gameState.player2Coins = safeCoins(gameState.player2Coins + data.prizePool);
             showNotification(`🏆 PLAYER 2 WINS THE TOURNAMENT! 🏆\n\n${data.name} Champion!\nPrize Pool: ${data.prizePool} coins awarded to Player 2!`);
         } else {
             showNotification(`💀 TOURNAMENT ENDED! 💀\n\nBoth players eliminated.\nNo prize awarded.\nEntry fees lost.`);
@@ -8042,6 +8596,17 @@
 
             const data = gameState.tournament2PlayerData;
             const currentRoundName = data.roundNames[data.currentRound] || 'Unknown Round';
+            const currentPlayerData = data.currentPlayer === 1 ? data.player1 : data.player2;
+
+            // Add Start Round button if current player's series hasn't started yet
+            let startRoundButton = '';
+            if (currentPlayerData.currentSeries.gamesPlayed === 0 && !currentPlayerData.currentSeries.playerCharacter) {
+                startRoundButton = `
+                    <button class="button" onclick="start2PlayerRound()" style="margin-top: 20px; padding: 15px 30px; font-size: 18px; background: #4CAF50; animation: claimPulse 1.5s ease-in-out infinite;">
+                        🎮 START ROUND - Player ${data.currentPlayer} Choose Character
+                    </button>
+                `;
+            }
 
             statusDiv.innerHTML = `
                 <div style="background: rgba(0,0,0,0.3); border-radius: 15px; padding: 20px; border: 3px solid #E91E63;">
@@ -8065,6 +8630,7 @@
                     <p style="margin: 5px 0; font-size: 16px; text-align: center;">Prize Pool: <strong>${data.prizePool} coins</strong></p>
                     <p style="margin: 5px 0; font-size: 14px; color: #4CAF50; text-align: center;">Character Tier: <strong>${data.characterTier.toUpperCase()}</strong></p>
                     ${data.finalMatch ? '<p style="margin: 10px 0; color: #FFD700; font-size: 18px; text-align: center; font-weight: bold;">🏆 FINALS: PLAYER VS PLAYER! 🏆</p>' : ''}
+                    ${startRoundButton}
                 </div>
             `;
         } else {
@@ -8619,13 +9185,13 @@
         // Refund the coins since they cancelled
         if (gameState.gameMode === 'multiplayer') {
             if (gameState.currentShopPlayer === 1) {
-                gameState.player1Coins += 1000;
+                gameState.player1Coins = safeCoins(gameState.player1Coins + 1000);
             } else {
-                gameState.player2Coins += 1000;
+                gameState.player2Coins = safeCoins(gameState.player2Coins + 1000);
             }
             updateMultiplayerCoinsDisplay();
         } else {
-            gameState.coins += 1000;
+            gameState.coins = safeCoins(gameState.coins + 1000);
             updateSinglePlayerCoinsDisplay();
         }
         
@@ -8866,13 +9432,13 @@
         if (milestone.reward.type === 'coins') {
             if (gameState.gameMode === 'multiplayer') {
                 if (gameState.currentShopPlayer === 1) {
-                    gameState.player1Coins += milestone.reward.amount;
+                    gameState.player1Coins = safeCoins(gameState.player1Coins + milestone.reward.amount);
                 } else {
-                    gameState.player2Coins += milestone.reward.amount;
+                    gameState.player2Coins = safeCoins(gameState.player2Coins + milestone.reward.amount);
                 }
                 updateMultiplayerCoinsDisplay();
             } else {
-                gameState.coins += milestone.reward.amount;
+                gameState.coins = safeCoins(gameState.coins + milestone.reward.amount);
                 updateSinglePlayerCoinsDisplay();
             }
             showNotification(`🏆 MILESTONE CLAIMED!\n${milestone.name}\n💰 +${milestone.reward.amount} coins!`);
@@ -8948,7 +9514,78 @@
         
         // Coin Challenges
         { id: 'big_spender', name: 'Big Spender', description: 'Spend 1000 coins in the shop', target: 1000, type: 'coins_spent', reward: 200, emoji: '💸' },
-        { id: 'chest_opener', name: 'Chest Opener', description: 'Open 10 chests', target: 10, type: 'chests_opened', reward: 150, emoji: '📦' }
+        { id: 'chest_opener', name: 'Chest Opener', description: 'Open 10 chests', target: 10, type: 'chests_opened', reward: 150, emoji: '📦' },
+
+        // NEW CHALLENGES - 50 MORE!
+
+        // Advanced Combat Challenges
+        { id: 'mega_damage', name: 'Mega Damage', description: 'Deal 2000 total damage in battles', target: 2000, type: 'damage', reward: 300, emoji: '💥' },
+        { id: 'ultra_damage', name: 'Ultra Damage', description: 'Deal 5000 total damage in battles', target: 5000, type: 'damage', reward: 600, emoji: '⚡' },
+        { id: 'special_spammer', name: 'Special Spammer', description: 'Use special attacks 50 times', target: 50, type: 'special_uses', reward: 150, emoji: '🌟' },
+        { id: 'special_legend', name: 'Special Legend', description: 'Use special attacks 100 times', target: 100, type: 'special_uses', reward: 350, emoji: '✨' },
+        { id: 'speed_demon', name: 'Speed Demon', description: 'Win 10 battles in under 30 seconds', target: 10, type: 'quick_wins', reward: 400, emoji: '⚡' },
+        { id: 'lightning_fast', name: 'Lightning Fast', description: 'Win a battle in under 15 seconds', target: 1, type: 'ultra_quick_wins', reward: 500, emoji: '⚡' },
+        { id: 'tank_destroyer', name: 'Tank Destroyer', description: 'Defeat 15 enemies with 300+ HP', target: 15, type: 'tank_kills', reward: 300, emoji: '🔨' },
+        { id: 'giant_slayer', name: 'Giant Slayer', description: 'Defeat 5 enemies with 400+ HP', target: 5, type: 'giant_kills', reward: 350, emoji: '⚔️' },
+
+        // Extreme Survival Challenges
+        { id: 'iron_wall', name: 'Iron Wall', description: 'Win 10 battles taking less than 50 damage', target: 10, type: 'low_damage_wins', reward: 350, emoji: '🛡️' },
+        { id: 'untouchable_master', name: 'Untouchable Master', description: 'Win 3 battles without taking any damage', target: 3, type: 'perfect_wins', reward: 600, emoji: '👻' },
+        { id: 'last_breath', name: 'Last Breath', description: 'Win 5 battles with less than 10% HP', target: 5, type: 'clutch_wins', reward: 400, emoji: '💀' },
+        { id: 'phoenix_rising', name: 'Phoenix Rising', description: 'Win 10 comeback battles', target: 10, type: 'comeback_wins', reward: 450, emoji: '🔥' },
+        { id: 'damage_sponge', name: 'Damage Sponge', description: 'Take 1000 total damage and survive', target: 1000, type: 'damage_taken', reward: 250, emoji: '🩹' },
+        { id: 'survivor_elite', name: 'Survivor Elite', description: 'Win 20 battles taking less than 100 damage', target: 20, type: 'medium_damage_wins', reward: 400, emoji: '🏥' },
+
+        // Win Streak Mastery
+        { id: 'win_streak_15', name: 'Dominator', description: 'Win 15 battles in a row', target: 15, type: 'win_streak', reward: 750, emoji: '👑' },
+        { id: 'win_streak_20', name: 'Immortal', description: 'Win 20 battles in a row', target: 20, type: 'win_streak', reward: 1000, emoji: '♾️' },
+        { id: 'win_streak_25', name: 'God Mode', description: 'Win 25 battles in a row', target: 25, type: 'win_streak', reward: 1500, emoji: '🌟' },
+        { id: 'total_wins_10', name: 'Warrior', description: 'Win 10 total battles', target: 10, type: 'total_wins', reward: 150, emoji: '⚔️' },
+        { id: 'total_wins_25', name: 'Veteran', description: 'Win 25 total battles', target: 25, type: 'total_wins', reward: 300, emoji: '🎖️' },
+        { id: 'total_wins_50', name: 'Champion', description: 'Win 50 total battles', target: 50, type: 'total_wins', reward: 600, emoji: '🏆' },
+        { id: 'total_wins_100', name: 'Legend', description: 'Win 100 total battles', target: 100, type: 'total_wins', reward: 1200, emoji: '👑' },
+
+        // Character Mastery
+        { id: 'character_variety', name: 'Character Variety', description: 'Win with 10 different characters', target: 10, type: 'different_char_wins', reward: 300, emoji: '🎭' },
+        { id: 'character_collector', name: 'Character Collector', description: 'Win with 15 different characters', target: 15, type: 'different_char_wins', reward: 500, emoji: '🌟' },
+        { id: 'common_hero', name: 'Common Hero', description: 'Win 10 battles with Common characters', target: 10, type: 'common_wins', reward: 200, emoji: '⚪' },
+        { id: 'rare_specialist', name: 'Rare Specialist', description: 'Win 10 battles with Rare characters', target: 10, type: 'rare_wins', reward: 250, emoji: '🔵' },
+        { id: 'epic_master', name: 'Epic Master', description: 'Win 10 battles with Epic characters', target: 10, type: 'epic_wins', reward: 350, emoji: '🟣' },
+        { id: 'legendary_lord', name: 'Legendary Lord', description: 'Win 10 battles with Legendary characters', target: 10, type: 'legendary_wins', reward: 500, emoji: '🟠' },
+        { id: 'underdog_champion', name: 'Underdog Champion', description: 'Win 10 battles as underdog', target: 10, type: 'underdog_wins', reward: 600, emoji: '🥊' },
+
+        // Trophy Mastery
+        { id: 'trophy_hoarder', name: 'Trophy Hoarder', description: 'Earn 250 trophies total', target: 250, type: 'trophy_earned', reward: 400, emoji: '🏆' },
+        { id: 'trophy_king', name: 'Trophy King', description: 'Earn 500 trophies total', target: 500, type: 'trophy_earned', reward: 800, emoji: '👑' },
+        { id: 'trophy_god', name: 'Trophy God', description: 'Earn 1000 trophies total', target: 1000, type: 'trophy_earned', reward: 1500, emoji: '⭐' },
+        { id: 'high_stakes', name: 'High Stakes', description: 'Earn 75+ trophies in one battle', target: 1, type: 'mega_trophy_battle', reward: 500, emoji: '💎' },
+        { id: 'trophy_rush', name: 'Trophy Rush', description: 'Earn 100+ trophies in one battle', target: 1, type: 'ultra_trophy_battle', reward: 750, emoji: '🌟' },
+
+        // Map Mastery
+        { id: 'map_master', name: 'Map Master', description: 'Win on 10 different maps', target: 10, type: 'different_map_wins', reward: 350, emoji: '🗺️' },
+        { id: 'volcano_legend', name: 'Volcano Legend', description: 'Win 10 battles on Lava Cavern', target: 10, type: 'volcano_wins', reward: 300, emoji: '🌋' },
+        { id: 'space_commander', name: 'Space Commander', description: 'Win 10 battles on Space Station', target: 10, type: 'space_wins', reward: 300, emoji: '🚀' },
+        { id: 'arena_veteran', name: 'Arena Veteran', description: 'Win 5 battles on Arena', target: 5, type: 'arena_wins', reward: 200, emoji: '🏟️' },
+        { id: 'forest_ranger', name: 'Forest Ranger', description: 'Win 5 battles on Forest', target: 5, type: 'forest_wins', reward: 200, emoji: '🌲' },
+
+        // Badge Mastery
+        { id: 'badge_hoarder', name: 'Badge Hoarder', description: 'Collect 25 different badges', target: 25, type: 'badges_collected', reward: 400, emoji: '🏅' },
+        { id: 'badge_master', name: 'Badge Master', description: 'Collect 50 different badges', target: 50, type: 'badges_collected', reward: 800, emoji: '💎' },
+        { id: 'epic_badge_hunter', name: 'Epic Badge Hunter', description: 'Get 3 Epic badges', target: 3, type: 'epic_badges', reward: 350, emoji: '🟣' },
+        { id: 'legendary_collector', name: 'Legendary Collector', description: 'Get 3 Legendary badges', target: 3, type: 'legendary_badges', reward: 1000, emoji: '💎' },
+
+        // Economy Challenges
+        { id: 'mega_spender', name: 'Mega Spender', description: 'Spend 2500 coins in the shop', target: 2500, type: 'coins_spent', reward: 400, emoji: '💸' },
+        { id: 'ultra_spender', name: 'Ultra Spender', description: 'Spend 5000 coins in the shop', target: 5000, type: 'coins_spent', reward: 800, emoji: '💰' },
+        { id: 'chest_addict', name: 'Chest Addict', description: 'Open 25 chests', target: 25, type: 'chests_opened', reward: 350, emoji: '📦' },
+        { id: 'chest_master', name: 'Chest Master', description: 'Open 50 chests', target: 50, type: 'chests_opened', reward: 700, emoji: '🎁' },
+        { id: 'coin_collector', name: 'Coin Collector', description: 'Earn 5000 coins total', target: 5000, type: 'coins_earned', reward: 500, emoji: '💰' },
+        { id: 'millionaire', name: 'Millionaire', description: 'Earn 10000 coins total', target: 10000, type: 'coins_earned', reward: 1000, emoji: '💎' },
+
+        // Special Achievement Challenges
+        { id: 'battle_veteran', name: 'Battle Veteran', description: 'Play 50 total battles', target: 50, type: 'battles_played', reward: 300, emoji: '⚔️' },
+        { id: 'battle_master', name: 'Battle Master', description: 'Play 100 total battles', target: 100, type: 'battles_played', reward: 600, emoji: '🎖️' },
+        { id: 'flawless_victory', name: 'Flawless Victory', description: 'Win with 100% HP remaining', target: 1, type: 'flawless_wins', reward: 400, emoji: '✨' }
     ];
 
     // Initialize challenge progress tracking
@@ -8958,6 +9595,7 @@
         }
         if (!gameState.challengeStats) {
             gameState.challengeStats = {
+                // Existing stats
                 totalDamage: 0,
                 specialUses: 0,
                 quickWins: 0,
@@ -8980,8 +9618,27 @@
                 legendaryBadges: 0,
                 coinsSpent: 0,
                 chestsOpened: 0,
-                // Character-specific win tracking for individual character challenges
-                characterWins: {} // e.g. { 'Spider': 5, 'Fire': 3, etc. }
+                characterWins: {},
+
+                // NEW STATS FOR 50 NEW CHALLENGES
+                ultraQuickWins: 0, // Wins in under 15 seconds
+                giantKills: 0, // Enemies with 400+ HP
+                clutchWins: 0, // Wins with less than 10% HP
+                damageTaken: 0, // Total damage taken
+                mediumDamageWins: 0, // Wins taking less than 100 damage
+                totalWins: 0, // Total battles won
+                commonWins: 0, // Wins with common characters
+                rareWins: 0, // Wins with rare characters
+                epicWins: 0, // Wins with epic characters
+                legendaryWins: 0, // Wins with legendary characters
+                megaTrophyBattles: 0, // 75+ trophies in one battle
+                ultraTrophyBattles: 0, // 100+ trophies in one battle
+                arenaWins: 0, // Wins on Arena map
+                forestWins: 0, // Wins on Forest map
+                epicBadges: 0, // Epic badges collected
+                coinsEarned: 0, // Total coins earned
+                battlesPlayed: 0, // Total battles played
+                flawlessWins: 0 // Wins with 100% HP
             };
         }
         
@@ -9028,39 +9685,79 @@
                 gameState.challengeStats.specialUses++;
                 break;
             case 'battle_won':
+                // Win streak tracking
                 gameState.challengeStats.currentWinStreak++;
                 gameState.challengeStats.maxWinStreak = Math.max(gameState.challengeStats.maxWinStreak, gameState.challengeStats.currentWinStreak);
-                
+                gameState.challengeStats.totalWins++;
+
+                // Time-based wins
                 if (data.timeRemaining > 60) gameState.challengeStats.quickWins++;
+                if (data.timeRemaining > 75) gameState.challengeStats.ultraQuickWins++; // Under 15 seconds
+
+                // HP-based wins
                 if (data.playerHP < data.playerMaxHP * 0.25) gameState.challengeStats.lowHpWins++;
+                if (data.playerHP < data.playerMaxHP * 0.1) gameState.challengeStats.clutchWins++; // Less than 10% HP
+                if (data.playerHP === data.playerMaxHP) gameState.challengeStats.flawlessWins++; // 100% HP
+
+                // Damage-based wins
                 if (data.damageTaken <= 50) gameState.challengeStats.lowDamageWins++;
+                if (data.damageTaken <= 100) gameState.challengeStats.mediumDamageWins++;
                 if (data.damageTaken === 0) gameState.challengeStats.perfectWins++;
+                gameState.challengeStats.damageTaken += data.damageTaken;
+
+                // Comeback wins
                 if (data.wasComeback) gameState.challengeStats.comebackWins++;
+
+                // Enemy HP-based kills
                 if (data.enemyHP >= 300) gameState.challengeStats.tankKills++;
+                if (data.enemyHP >= 400) gameState.challengeStats.giantKills++;
+
+                // Trophy-based achievements
                 if (data.trophiesEarned >= 50) gameState.challengeStats.highTrophyBattles++;
-                
+                if (data.trophiesEarned >= 75) gameState.challengeStats.megaTrophyBattles++;
+                if (data.trophiesEarned >= 100) gameState.challengeStats.ultraTrophyBattles++;
+                gameState.challengeStats.trophiesEarned += data.trophiesEarned;
+
+                // Character tracking
                 gameState.challengeStats.charactersUsed.add(data.character);
                 gameState.challengeStats.raritiesWon.add(data.rarity);
-                gameState.challengeStats.mapsWon.add(data.map);
-                
-                if (data.map === 'volcano') gameState.challengeStats.volcanoWins++;
-                if (data.map === 'space') gameState.challengeStats.spaceWins++;
-                
+
+                // Rarity-specific wins
+                if (data.rarity === 'common') gameState.challengeStats.commonWins++;
+                if (data.rarity === 'rare') gameState.challengeStats.rareWins++;
+                if (data.rarity === 'epic') gameState.challengeStats.epicWins++;
+                if (data.rarity === 'legendary') gameState.challengeStats.legendaryWins++;
+
+                // Underdog wins
                 if (data.rarity === 'common' && (data.enemyRarity === 'epic' || data.enemyRarity === 'legendary')) {
                     gameState.challengeStats.underdogWins++;
                 }
-                
-                gameState.challengeStats.trophiesEarned += data.trophiesEarned;
+
+                // Map tracking
+                gameState.challengeStats.mapsWon.add(data.map);
+                if (data.map === 'volcano') gameState.challengeStats.volcanoWins++;
+                if (data.map === 'space') gameState.challengeStats.spaceWins++;
+                if (data.map === 'arena') gameState.challengeStats.arenaWins++;
+                if (data.map === 'forest') gameState.challengeStats.forestWins++;
+
                 break;
             case 'battle_lost':
                 gameState.challengeStats.currentWinStreak = 0;
+                gameState.challengeStats.battlesPlayed++;
+                break;
+            case 'battle_started':
+                gameState.challengeStats.battlesPlayed++;
                 break;
             case 'badge_collected':
                 gameState.challengeStats.badgesCollected++;
                 if (data.rarity === 'legendary') gameState.challengeStats.legendaryBadges++;
-                break;aaw
+                if (data.rarity === 'epic') gameState.challengeStats.epicBadges++;
+                break;
             case 'coins_spent':
                 gameState.challengeStats.coinsSpent += data.amount;
+                break;
+            case 'coins_earned':
+                gameState.challengeStats.coinsEarned += data.amount;
                 break;
             case 'chest_opened':
                 gameState.challengeStats.chestsOpened++;
@@ -9135,8 +9832,64 @@
                 case 'chests_opened':
                     progress = gameState.challengeStats.chestsOpened;
                     break;
+
+                // NEW CHALLENGE TYPES
+                case 'ultra_quick_wins':
+                    progress = gameState.challengeStats.ultraQuickWins;
+                    break;
+                case 'giant_kills':
+                    progress = gameState.challengeStats.giantKills;
+                    break;
+                case 'clutch_wins':
+                    progress = gameState.challengeStats.clutchWins;
+                    break;
+                case 'damage_taken':
+                    progress = gameState.challengeStats.damageTaken;
+                    break;
+                case 'medium_damage_wins':
+                    progress = gameState.challengeStats.mediumDamageWins;
+                    break;
+                case 'total_wins':
+                    progress = gameState.challengeStats.totalWins;
+                    break;
+                case 'common_wins':
+                    progress = gameState.challengeStats.commonWins;
+                    break;
+                case 'rare_wins':
+                    progress = gameState.challengeStats.rareWins;
+                    break;
+                case 'epic_wins':
+                    progress = gameState.challengeStats.epicWins;
+                    break;
+                case 'legendary_wins':
+                    progress = gameState.challengeStats.legendaryWins;
+                    break;
+                case 'mega_trophy_battle':
+                    progress = gameState.challengeStats.megaTrophyBattles;
+                    break;
+                case 'ultra_trophy_battle':
+                    progress = gameState.challengeStats.ultraTrophyBattles;
+                    break;
+                case 'arena_wins':
+                    progress = gameState.challengeStats.arenaWins;
+                    break;
+                case 'forest_wins':
+                    progress = gameState.challengeStats.forestWins;
+                    break;
+                case 'epic_badges':
+                    progress = gameState.challengeStats.epicBadges;
+                    break;
+                case 'coins_earned':
+                    progress = gameState.challengeStats.coinsEarned;
+                    break;
+                case 'battles_played':
+                    progress = gameState.challengeStats.battlesPlayed;
+                    break;
+                case 'flawless_wins':
+                    progress = gameState.challengeStats.flawlessWins;
+                    break;
             }
-            
+
             challenge.progress = Math.min(progress, challenge.target);
             
             // Complete challenge if target reached
@@ -9147,24 +9900,18 @@
     }
 
     function completeChallenge(challenge, index) {
-        gameState.completedChallenges.push(challenge.id);
-        gameState.challenges.splice(index, 1);
-        
-        // Award coins
-        if (gameState.gameMode === 'multiplayer') {
-            // Award to both players for completing challenges
-            gameState.player1Coins += challenge.reward;
-            gameState.player2Coins += challenge.reward;
-            updateMultiplayerCoinsDisplay();
-        } else {
-            gameState.coins += challenge.reward;
-            updateSinglePlayerCoinsDisplay();
+        // Mark challenge as claimed (will be shown in loading screen)
+        challenge.claimed = true;
+
+        // Add to completed list
+        if (!gameState.completedChallenges.includes(challenge.id)) {
+            gameState.completedChallenges.push(challenge.id);
         }
-        
-        showNotification(`✅ CHALLENGE COMPLETE!\n${challenge.emoji} ${challenge.name}\n💰 +${challenge.reward} coins!`);
-        
-        // Generate a new challenge to replace it
-        generateNewChallenge();
+
+        // Don't award coins or remove challenge here - that happens in checkCompletedChallenges()
+        // This function just marks the challenge as ready to be claimed
+
+        console.log(`Challenge ready to claim: ${challenge.name}`);
     }
 
     // Initialize on game start
