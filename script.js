@@ -4869,42 +4869,52 @@
                 this.lastDrawLog = Date.now();
             }
 
-            // Calculate position of item rotating around player
-            const orbitRadius = 70; // Distance from player center (increased for better visibility)
+            // Calculate hand position based on current animation state
+            let handX, handY;
+
+            if (!this.onGround) {
+                // JUMPING/FALLING HAND POSITIONS
+                if (this.velocityY < 0) {
+                    // GOING UP (jumping) - Hand follows arm going down
+                    const jumpProgress = Math.abs(this.velocityY) / 19;
+                    const armDownAmount = Math.min(jumpProgress * 20, 20);
+                    handX = centerX + (this.direction > 0 ? 15 : -15);
+                    handY = centerY + 15 + armDownAmount;
+                } else {
+                    // FALLING - Hand follows wiggling arms that are up
+                    const wiggleTime = Date.now() * 0.01;
+                    const armWiggle = this.direction > 0 ? Math.sin(wiggleTime + 1) * 5 : Math.sin(wiggleTime) * 5;
+                    handX = centerX + (this.direction > 0 ? 20 : -20) + armWiggle;
+                    handY = centerY - 25;
+                }
+            } else if (this.isMoving) {
+                // WALKING ANIMATION - Hand follows pumping arm motion
+                const armPump = this.direction > 0 ?
+                    Math.sin(this.animationFrame + Math.PI) * 10 :
+                    Math.sin(this.animationFrame) * 10;
+                handX = centerX + (this.direction > 0 ? 12 : -12) + armPump;
+                handY = centerY + 12;
+            } else {
+                // IDLE - Hand at T-pose position
+                handX = centerX + (this.direction > 0 ? 20 : -20);
+                handY = centerY;
+            }
 
             ctx.save();
 
-            // Draw orbit circle (more visible)
-            ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)'; // More visible gold circle
-            ctx.lineWidth = 3;
-            ctx.setLineDash([5, 5]); // Dashed line
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, orbitRadius, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.setLineDash([]); // Reset dash
+            // Draw item at edge of hand (offset beyond hand position)
+            // Offset by 15 pixels in the direction the character is facing
+            const itemOffsetX = this.direction > 0 ? 15 : -15;
+            const itemX = handX + itemOffsetX;
+            const itemY = handY;
 
-            // Draw 50 duplicate emojis around the orbit
-            const numDuplicates = 50;
-            const angleStep = (Math.PI * 2) / numDuplicates;
-
-            for (let i = 0; i < numDuplicates; i++) {
-                const angle = this.itemRotation + (i * angleStep);
-                const itemX = centerX + Math.cos(angle) * orbitRadius;
-                const itemY = centerY + Math.sin(angle) * orbitRadius;
-
-                // Vary size slightly for depth effect
-                const sizeVariation = 1 + Math.sin(angle * 2) * 0.15;
-                const fontSize = Math.floor(28 * sizeVariation);
-
-                // Add glow effect
-                ctx.shadowColor = '#FFD700';
-                ctx.shadowBlur = 15;
-                ctx.font = `bold ${fontSize}px Arial`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillText(this.heldItem.emoji, itemX, itemY);
-            }
+            ctx.shadowColor = '#FFD700';
+            ctx.shadowBlur = 15;
+            ctx.font = 'bold 28px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText(this.heldItem.emoji, itemX, itemY);
 
             ctx.restore();
         }
@@ -4982,7 +4992,7 @@
             ctx.strokeStyle = this.char.color;
             ctx.lineWidth = 4;
             ctx.lineCap = 'round';
-            
+
             if (!this.onGround) {
                 // JUMPING/FALLING ARM ANIMATIONS
                 if (this.velocityY < 0) {
@@ -5036,12 +5046,12 @@
                 ctx.lineTo(centerX + 12 + rightArmPump, centerY + 12);
                 ctx.stroke();
             } else {
-                // IDLE ANIMATION - Normal straight arms (just landed from falling)
+                // IDLE ANIMATION - Classic stickman T-pose with arms straight out at 90 degrees
                 ctx.beginPath();
                 ctx.moveTo(centerX, centerY);
-                ctx.lineTo(centerX - 12, centerY);
+                ctx.lineTo(centerX - 20, centerY);
                 ctx.moveTo(centerX, centerY);
-                ctx.lineTo(centerX + 12, centerY);
+                ctx.lineTo(centerX + 20, centerY);
                 ctx.stroke();
             }
             
@@ -5179,9 +5189,19 @@
 
             // DRAW EQUIPPED ADDONS IN BATTLE
             const playerName = this === gameState.battle?.player1 ? 'player1' : 'player2';
-            const equippedAddons = gameState.gameMode === 'multiplayer'
-                ? (playerName === 'player1' ? gameState.player1EquippedAddons : gameState.player2EquippedAddons)
-                : gameState.equippedAddons;
+
+            // Get character key for this player
+            const charKey = playerName === 'player1' ? gameState.selectedCharacter : gameState.selectedPlayer2Character;
+
+            // Initialize character equipped addons storage if it doesn't exist
+            if (!gameState.characterEquippedAddons) {
+                gameState.characterEquippedAddons = {};
+            }
+
+            // Get equipped addons for this specific character
+            const equippedAddons = charKey && gameState.characterEquippedAddons[charKey]
+                ? gameState.characterEquippedAddons[charKey]
+                : null;
 
             if (equippedAddons) {
                 const shoeKey = equippedAddons.shoes;
@@ -5189,12 +5209,13 @@
                 const shirtKey = equippedAddons.shirt;
                 const hatKey = equippedAddons.hat;
 
-                // Extract country/sport from keys
+                // Extract country/sport/theme from keys
                 const getCountrySport = (key) => {
                     if (!key) return { country: null, sport: null };
                     const country = key.includes('_') ? key.split('_')[1] : null;
                     const sports = ['soccer', 'basketball', 'baseball', 'football', 'hockey', 'tennis', 'golf', 'boxing', 'racing', 'cycling'];
-                    const sport = sports.find(s => key.includes(s));
+                    const themes = ['wizard', 'knight', 'ninja', 'chef', 'doctor', 'pilot', 'winter', 'summer', '80s', '90s', 'army', 'navy'];
+                    const sport = sports.find(s => key.includes(s)) || themes.find(t => key.includes(t));
                     return { country, sport };
                 };
 
@@ -5254,23 +5275,33 @@
                     rightHandX = centerX + 12 + rightArmPump;
                     rightHandY = centerY + 12;
                 } else {
-                    // IDLE - standing still
+                    // IDLE - standing still with classic T-pose
                     leftFootX = centerX - 10;
                     leftFootY = centerY + 35;
                     rightFootX = centerX + 10;
                     rightFootY = centerY + 35;
 
-                    leftHandX = centerX - 12;
+                    // Arms straight out at 90 degrees (classic stickman)
+                    leftHandX = centerX - 20;
                     leftHandY = centerY;
-                    rightHandX = centerX + 12;
+                    rightHandX = centerX + 20;
                     rightHandY = centerY;
                 }
 
-                // Shoulders are always at fixed positions relative to body
-                leftShoulderX = centerX - 15;
-                leftShoulderY = centerY - 10;
-                rightShoulderX = centerX + 15;
-                rightShoulderY = centerY - 10;
+                // Shoulders - adjust based on animation state for better shirt rendering
+                if (this.isMoving || !this.onGround) {
+                    // Moving/jumping - shoulders at normal position
+                    leftShoulderX = centerX - 15;
+                    leftShoulderY = centerY - 10;
+                    rightShoulderX = centerX + 15;
+                    rightShoulderY = centerY - 10;
+                } else {
+                    // Idle T-pose - shoulders at body center for proper sleeve rendering
+                    leftShoulderX = centerX - 5;
+                    leftShoulderY = centerY - 5;
+                    rightShoulderX = centerX + 5;
+                    rightShoulderY = centerY - 5;
+                }
 
                 // Draw SHOES on animated feet
                 if (shoeKey && addons[shoeKey]) {
@@ -5287,16 +5318,16 @@
                     drawPants(ctx, centerX, centerY + 20, leftFootX, leftFootY - 3, rightFootX, rightFootY - 3, 8, addons[pantsKey].color, country, sport);
                 }
 
-                // Draw SHIRT on animated body and arms
+                // Draw SHIRT on animated body and arms (shirt will cover the arms)
                 if (shirtKey && addons[shirtKey]) {
                     const { country, sport } = getCountrySport(shirtKey);
                     drawShirt(ctx, centerX, centerY - 20, centerY + 20, leftShoulderX, leftShoulderY, rightShoulderX, rightShoulderY, leftHandX, leftHandY, rightHandX, rightHandY, 12, addons[shirtKey].color, country, sport);
                 }
 
-                // Draw HAT above head
+                // Draw HAT on top of head (not inside it) - higher in battle
                 if (hatKey && addons[hatKey]) {
                     const { country, sport } = getCountrySport(hatKey);
-                    drawHat(ctx, centerX, centerY - 38, 15, 12, addons[hatKey].color, country, sport);
+                    drawHat(ctx, centerX, centerY - 55, 15, 12, addons[hatKey].color, country, sport);
                 }
             }
 
@@ -6787,7 +6818,7 @@
 
     function showBadges() {
         updateBadgesPlayerInfo();
-        updateBadgesDisplay(); 
+        updateBadgesDisplay();
         showScreen('badgesScreen');
     }
 
@@ -7463,29 +7494,40 @@
             ? (gameState.currentShopPlayer === 1 ? gameState.player1Addons : gameState.player2Addons)
             : gameState.unlockedAddons;
 
-        const equippedAddons = gameState.gameMode === 'multiplayer'
-            ? (gameState.currentShopPlayer === 1 ? gameState.player1EquippedAddons : gameState.player2EquippedAddons)
-            : gameState.equippedAddons;
-
-        // Initialize equipped addons if needed
-        if (!equippedAddons || !equippedAddons.hat) {
-            if (!equippedAddons) {
-                if (gameState.gameMode === 'multiplayer') {
-                    if (gameState.currentShopPlayer === 1) {
-                        gameState.player1EquippedAddons = { hat: null, shirt: null, pants: null, shoes: null };
-                    } else {
-                        gameState.player2EquippedAddons = { hat: null, shirt: null, pants: null, shoes: null };
-                    }
-                } else {
-                    gameState.equippedAddons = { hat: null, shirt: null, pants: null, shoes: null };
-                }
-            } else {
-                equippedAddons.hat = null;
-                equippedAddons.shirt = null;
-                equippedAddons.pants = null;
-                equippedAddons.shoes = null;
-            }
+        // Initialize character equipped addons storage if it doesn't exist
+        if (!gameState.characterEquippedAddons) {
+            gameState.characterEquippedAddons = {};
         }
+
+        // Get current character key
+        const currentCharKey = gameState.currentDetailCharacter;
+        if (!currentCharKey) return;
+
+        // Initialize this character's equipped addons if needed
+        if (!gameState.characterEquippedAddons[currentCharKey]) {
+            gameState.characterEquippedAddons[currentCharKey] = { hat: null, shirt: null, pants: null, shoes: null };
+        }
+
+        // Get all equipped addons from all characters to filter them out
+        const getAllEquippedAddons = () => {
+            const equipped = new Set();
+
+            // Add from all characters
+            if (gameState.characterEquippedAddons) {
+                Object.values(gameState.characterEquippedAddons).forEach(charAddons => {
+                    Object.values(charAddons).forEach(addonKey => {
+                        if (addonKey) equipped.add(addonKey);
+                    });
+                });
+            }
+
+            return equipped;
+        };
+
+        const allEquippedAddons = getAllEquippedAddons();
+
+        // Get current character's equipped addons
+        const currentEquipped = gameState.characterEquippedAddons[currentCharKey];
 
         // Update each dropdown
         ['hat', 'shirt', 'pants', 'shoes'].forEach(type => {
@@ -7500,21 +7542,24 @@
                 playerAddons.forEach(addonKey => {
                     const addon = addons[addonKey];
                     if (addon && addon.type === type) {
-                        const option = document.createElement('option');
-                        option.value = addonKey;
-                        option.textContent = `${addon.name} (${addon.rarity})`;
-                        option.style.color = addon.color;
-                        option.style.fontWeight = 'bold';
-                        select.appendChild(option);
+                        // Only show addon if it's not equipped on another character
+                        // OR if it's equipped on THIS character (so they can see what they have equipped)
+                        const isEquippedOnThisCharacter = currentEquipped && currentEquipped[type] === addonKey;
+                        const isEquippedOnOtherCharacter = allEquippedAddons.has(addonKey) && !isEquippedOnThisCharacter;
+
+                        if (!isEquippedOnOtherCharacter) {
+                            const option = document.createElement('option');
+                            option.value = addonKey;
+                            option.textContent = `${addon.name} (${addon.rarity})`;
+                            option.style.color = addon.color;
+                            option.style.fontWeight = 'bold';
+                            select.appendChild(option);
+                        }
                     }
                 });
             }
 
             // Set current selection
-            const currentEquipped = gameState.gameMode === 'multiplayer'
-                ? (gameState.currentShopPlayer === 1 ? gameState.player1EquippedAddons : gameState.player2EquippedAddons)
-                : gameState.equippedAddons;
-
             if (currentEquipped && currentEquipped[type]) {
                 select.value = currentEquipped[type];
             }
@@ -7523,40 +7568,53 @@
 
     // Equip an addon
     window.equipAddon = function(type, addonKey) {
-        // Get the correct equipped addons object
-        let equippedAddons;
-        if (gameState.gameMode === 'multiplayer') {
-            if (gameState.currentShopPlayer === 1) {
-                if (!gameState.player1EquippedAddons) {
-                    gameState.player1EquippedAddons = { hat: null, shirt: null, pants: null, shoes: null };
-                }
-                equippedAddons = gameState.player1EquippedAddons;
-            } else {
-                if (!gameState.player2EquippedAddons) {
-                    gameState.player2EquippedAddons = { hat: null, shirt: null, pants: null, shoes: null };
-                }
-                equippedAddons = gameState.player2EquippedAddons;
-            }
-        } else {
-            if (!gameState.equippedAddons) {
-                gameState.equippedAddons = { hat: null, shirt: null, pants: null, shoes: null };
-            }
-            equippedAddons = gameState.equippedAddons;
+        // Initialize character equipped addons storage if it doesn't exist
+        if (!gameState.characterEquippedAddons) {
+            gameState.characterEquippedAddons = {};
         }
+
+        // Get current character key
+        const currentCharKey = gameState.currentDetailCharacter;
+        if (!currentCharKey) {
+            showNotification('No character selected!');
+            return;
+        }
+
+        // Initialize this character's equipped addons if needed
+        if (!gameState.characterEquippedAddons[currentCharKey]) {
+            gameState.characterEquippedAddons[currentCharKey] = { hat: null, shirt: null, pants: null, shoes: null };
+        }
+
+        const equippedAddons = gameState.characterEquippedAddons[currentCharKey];
 
         if (addonKey === '') {
             // Unequip
             equippedAddons[type] = null;
-            showNotification(`${type.toUpperCase()} unequipped!`);
+            showNotification(`${type.toUpperCase()} unequipped from ${characters[currentCharKey].name}!`);
         } else {
-            // Equip
+            // UNEQUIP THIS ADDON FROM ALL OTHER CHARACTERS FIRST
+            Object.keys(gameState.characterEquippedAddons).forEach(charKey => {
+                if (charKey !== currentCharKey) {
+                    const otherCharAddons = gameState.characterEquippedAddons[charKey];
+                    Object.keys(otherCharAddons).forEach(addonType => {
+                        if (otherCharAddons[addonType] === addonKey) {
+                            otherCharAddons[addonType] = null;
+                        }
+                    });
+                }
+            });
+
+            // Now equip to current character
             const addon = addons[addonKey];
             equippedAddons[type] = addonKey;
-            showNotification(`Equipped ${addon.name}!`);
+            showNotification(`Equipped ${addon.name} on ${characters[currentCharKey].name}!`);
         }
 
         // Save game state
         saveGameState();
+
+        // Refresh the dropdown to update available addons
+        updateAddonDropdowns();
 
         // The character will automatically update on the next animation frame
         // No need to restart the animation
@@ -7813,11 +7871,11 @@
             ctx.shadowBlur = 30;
             ctx.shadowColor = char.color;
 
-            // Head (emoji)
+            // Head (emoji) - moved down to align better with body
             ctx.font = '120px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(char.emoji, 0, -150);
+            ctx.fillText(char.emoji, 0, -120);
 
             // Body
             ctx.beginPath();
@@ -7825,19 +7883,38 @@
             ctx.lineTo(0, 80);
             ctx.stroke();
 
-            // Left arm
-            ctx.beginPath();
-            ctx.moveTo(0, -40);
-            ctx.lineTo(pose.leftArmX, pose.leftArmY);
-            ctx.lineTo(pose.leftHandX, pose.leftHandY);
-            ctx.stroke();
+            // DRAW EQUIPPED ADDONS - Check first to conditionally draw limbs
+            // Initialize character equipped addons storage if it doesn't exist
+            if (!gameState.characterEquippedAddons) {
+                gameState.characterEquippedAddons = {};
+            }
 
-            // Right arm
-            ctx.beginPath();
-            ctx.moveTo(0, -40);
-            ctx.lineTo(pose.rightArmX, pose.rightArmY);
-            ctx.lineTo(pose.rightHandX, pose.rightHandY);
-            ctx.stroke();
+            // Get equipped addons for this specific character
+            const equippedAddons = charKey && gameState.characterEquippedAddons[charKey]
+                ? gameState.characterEquippedAddons[charKey]
+                : null;
+
+            // Check if shirt and shoes are equipped
+            const hasShirt = equippedAddons && equippedAddons.shirt && addons[equippedAddons.shirt];
+            const hasShoes = equippedAddons && equippedAddons.shoes && addons[equippedAddons.shoes];
+
+            // Left arm - only draw if no shirt equipped
+            if (!hasShirt) {
+                ctx.beginPath();
+                ctx.moveTo(0, -40);
+                ctx.lineTo(pose.leftArmX, pose.leftArmY);
+                ctx.lineTo(pose.leftHandX, pose.leftHandY);
+                ctx.stroke();
+            }
+
+            // Right arm - only draw if no shirt equipped
+            if (!hasShirt) {
+                ctx.beginPath();
+                ctx.moveTo(0, -40);
+                ctx.lineTo(pose.rightArmX, pose.rightArmY);
+                ctx.lineTo(pose.rightHandX, pose.rightHandY);
+                ctx.stroke();
+            }
 
             // Left leg
             ctx.beginPath();
@@ -7853,28 +7930,27 @@
             ctx.lineTo(pose.rightFootX, pose.rightFootY);
             ctx.stroke();
 
-            // Draw hands (circles)
-            ctx.beginPath();
-            ctx.arc(pose.leftHandX, pose.leftHandY, 12, 0, Math.PI * 2);
-            ctx.fill();
+            // Draw hands (circles) - only if no shirt equipped
+            if (!hasShirt) {
+                ctx.beginPath();
+                ctx.arc(pose.leftHandX, pose.leftHandY, 12, 0, Math.PI * 2);
+                ctx.fill();
 
-            ctx.beginPath();
-            ctx.arc(pose.rightHandX, pose.rightHandY, 12, 0, Math.PI * 2);
-            ctx.fill();
+                ctx.beginPath();
+                ctx.arc(pose.rightHandX, pose.rightHandY, 12, 0, Math.PI * 2);
+                ctx.fill();
+            }
 
-            // Draw feet (circles)
-            ctx.beginPath();
-            ctx.arc(pose.leftFootX, pose.leftFootY, 15, 0, Math.PI * 2);
-            ctx.fill();
+            // Draw feet (circles) - only if no shoes equipped
+            if (!hasShoes) {
+                ctx.beginPath();
+                ctx.arc(pose.leftFootX, pose.leftFootY, 15, 0, Math.PI * 2);
+                ctx.fill();
 
-            ctx.beginPath();
-            ctx.arc(pose.rightFootX, pose.rightFootY, 15, 0, Math.PI * 2);
-            ctx.fill();
-
-            // DRAW EQUIPPED ADDONS
-            const equippedAddons = gameState.gameMode === 'multiplayer'
-                ? (gameState.currentShopPlayer === 1 ? gameState.player1EquippedAddons : gameState.player2EquippedAddons)
-                : gameState.equippedAddons;
+                ctx.beginPath();
+                ctx.arc(pose.rightFootX, pose.rightFootY, 15, 0, Math.PI * 2);
+                ctx.fill();
+            }
 
             if (equippedAddons) {
                 const shoeKey = equippedAddons.shoes;
@@ -7882,22 +7958,23 @@
                 const shirtKey = equippedAddons.shirt;
                 const hatKey = equippedAddons.hat;
 
-                // Extract country/sport from keys
+                // Extract country/sport/theme from keys
                 const getCountrySport = (key) => {
                     if (!key) return { country: null, sport: null };
                     const country = key.includes('_') ? key.split('_')[1] : null;
                     const sports = ['soccer', 'basketball', 'baseball', 'football', 'hockey', 'tennis', 'golf', 'boxing', 'racing', 'cycling'];
-                    const sport = sports.find(s => key.includes(s));
+                    const themes = ['wizard', 'knight', 'ninja', 'chef', 'doctor', 'pilot', 'winter', 'summer', '80s', '90s', 'army', 'navy'];
+                    const sport = sports.find(s => key.includes(s)) || themes.find(t => key.includes(t));
                     return { country, sport };
                 };
 
-                // Draw SHOES on animated feet
+                // Draw SHOES on animated feet (bigger to replace foot circles)
                 if (shoeKey && addons[shoeKey]) {
                     const { country, sport } = getCountrySport(shoeKey);
-                    // Left shoe - follows foot animation
-                    drawShoe(ctx, pose.leftFootX - 25, pose.leftFootY - 10, 50, 20, addons[shoeKey].color, country, sport);
-                    // Right shoe - follows foot animation
-                    drawShoe(ctx, pose.rightFootX - 25, pose.rightFootY - 10, 50, 20, addons[shoeKey].color, country, sport);
+                    // Left shoe - follows foot animation (bigger size: 60x30 instead of 50x20)
+                    drawShoe(ctx, pose.leftFootX - 30, pose.leftFootY - 15, 60, 30, addons[shoeKey].color, country, sport);
+                    // Right shoe - follows foot animation (bigger size: 60x30 instead of 50x20)
+                    drawShoe(ctx, pose.rightFootX - 30, pose.rightFootY - 15, 60, 30, addons[shoeKey].color, country, sport);
                 }
 
                 // Draw PANTS on animated legs
@@ -7912,10 +7989,10 @@
                     drawShirt(ctx, 0, -80, 80, -60, -40, 60, -40, pose.leftHandX, pose.leftHandY, pose.rightHandX, pose.rightHandY, 40, addons[shirtKey].color, country, sport);
                 }
 
-                // Draw HAT above animated head
+                // Draw HAT on top of animated head (not inside it)
                 if (hatKey && addons[hatKey]) {
                     const { country, sport } = getCountrySport(hatKey);
-                    drawHat(ctx, 0, -200, 50, 40, addons[hatKey].color, country, sport);
+                    drawHat(ctx, 0, -175, 50, 40, addons[hatKey].color, country, sport);
                 }
 
                 ctx.shadowBlur = 0;
@@ -8095,10 +8172,10 @@
 
     function startBattle() {
         if (!gameState.selectedCharacter || !gameState.selectedMap || !gameState.selectedPlayer2Character) return;
-        
+
         // Use the enemy character that was already selected in the preparation screen
         const enemyChar = gameState.selectedPlayer2Character;
-        
+
         if (gameState.selectedBattleMode === 'boss_battle') {
             document.getElementById('player1Name').textContent = `P1: ${characters[gameState.selectedCharacter].name}`;
             document.getElementById('player2Name').textContent = `P2: ${characters[enemyChar].name}`;
@@ -8110,12 +8187,41 @@
             document.getElementById('player2Name').textContent = `CPU: ${characters[enemyChar].name} (${gameState.selectedDifficulty.toUpperCase()})`;
         }
 
+        // Generate random addons for CPU (single player only)
+        if (gameState.gameMode !== 'multiplayer') {
+            const player1Addons = gameState.equippedAddons || {};
+            const cpuAddons = {};
+
+            // Get all addon keys by type
+            const allAddonKeys = Object.keys(addons);
+            const hatKeys = allAddonKeys.filter(key => addons[key].type === 'hat');
+            const shirtKeys = allAddonKeys.filter(key => addons[key].type === 'shirt');
+            const pantsKeys = allAddonKeys.filter(key => addons[key].type === 'pants');
+            const shoesKeys = allAddonKeys.filter(key => addons[key].type === 'shoes');
+
+            // Helper function to get random addon different from player's
+            const getRandomAddon = (addonKeys, playerAddon) => {
+                const availableAddons = addonKeys.filter(key => key !== playerAddon);
+                if (availableAddons.length === 0) return null;
+                return availableAddons[Math.floor(Math.random() * availableAddons.length)];
+            };
+
+            // Assign random addons to CPU (different from player's)
+            cpuAddons.hat = getRandomAddon(hatKeys, player1Addons.hat);
+            cpuAddons.shirt = getRandomAddon(shirtKeys, player1Addons.shirt);
+            cpuAddons.pants = getRandomAddon(pantsKeys, player1Addons.pants);
+            cpuAddons.shoes = getRandomAddon(shoesKeys, player1Addons.shoes);
+
+            // Store CPU addons temporarily for this battle
+            gameState.cpuEquippedAddons = cpuAddons;
+        }
+
         // Display equipped addons
         const player1AddonsDiv = document.getElementById('player1Addons');
         const player2AddonsDiv = document.getElementById('player2Addons');
 
         const player1Addons = gameState.gameMode === 'multiplayer' ? gameState.player1EquippedAddons : gameState.equippedAddons;
-        const player2Addons = gameState.gameMode === 'multiplayer' ? gameState.player2EquippedAddons : null;
+        const player2Addons = gameState.gameMode === 'multiplayer' ? gameState.player2EquippedAddons : gameState.cpuEquippedAddons;
 
         // Display Player 1 addons
         if (player1Addons && (player1Addons.hat || player1Addons.shirt || player1Addons.pants || player1Addons.shoes)) {
@@ -8137,8 +8243,8 @@
             player1AddonsDiv.innerHTML = '';
         }
 
-        // Display Player 2 addons (only in multiplayer)
-        if (gameState.gameMode === 'multiplayer' && player2Addons && (player2Addons.hat || player2Addons.shirt || player2Addons.pants || player2Addons.shoes)) {
+        // Display Player 2/CPU addons
+        if (player2Addons && (player2Addons.hat || player2Addons.shirt || player2Addons.pants || player2Addons.shoes)) {
             let addonText = '<div style="font-weight: bold; margin-bottom: 3px;">Equipped:</div>';
             if (player2Addons.hat && addons[player2Addons.hat]) {
                 addonText += `<div>Hat: ${addons[player2Addons.hat].name}</div>`;
@@ -8504,21 +8610,21 @@
         ctx.closePath();
         ctx.fill();
 
-        // Left sleeve
+        // Left sleeve - extra wide to fully cover arm at all angles
         ctx.beginPath();
         ctx.moveTo(leftShoulderX, leftShoulderY);
-        ctx.lineTo(leftShoulderX - width * 0.3, leftShoulderY);
-        ctx.lineTo(leftHandX - width * 0.2, leftHandY);
-        ctx.lineTo(leftHandX + width * 0.2, leftHandY);
+        ctx.lineTo(leftShoulderX - width * 0.8, leftShoulderY);
+        ctx.lineTo(leftHandX - width * 0.7, leftHandY);
+        ctx.lineTo(leftHandX + width * 0.7, leftHandY);
         ctx.closePath();
         ctx.fill();
 
-        // Right sleeve
+        // Right sleeve - extra wide to fully cover arm at all angles
         ctx.beginPath();
         ctx.moveTo(rightShoulderX, rightShoulderY);
-        ctx.lineTo(rightShoulderX + width * 0.3, rightShoulderY);
-        ctx.lineTo(rightHandX + width * 0.2, rightHandY);
-        ctx.lineTo(rightHandX - width * 0.2, rightHandY);
+        ctx.lineTo(rightShoulderX + width * 0.8, rightShoulderY);
+        ctx.lineTo(rightHandX + width * 0.7, rightHandY);
+        ctx.lineTo(rightHandX - width * 0.7, rightHandY);
         ctx.closePath();
         ctx.fill();
 
@@ -8865,6 +8971,142 @@
                     ctx.lineTo(x + Math.cos(angle) * size, y + Math.sin(angle) * size);
                     ctx.stroke();
                 }
+            },
+            'wizard': () => {
+                // Star and moon
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i * Math.PI * 2 / 5) - Math.PI / 2;
+                    const outerRadius = i % 2 === 0 ? size : size * 0.4;
+                    ctx.lineTo(x + Math.cos(angle) * outerRadius, y + Math.sin(angle) * outerRadius);
+                }
+                ctx.closePath();
+                ctx.fill();
+            },
+            'knight': () => {
+                // Shield
+                ctx.fillStyle = '#C0C0C0';
+                ctx.beginPath();
+                ctx.moveTo(x, y - size);
+                ctx.lineTo(x + size * 0.7, y - size * 0.5);
+                ctx.lineTo(x + size * 0.7, y + size * 0.5);
+                ctx.lineTo(x, y + size);
+                ctx.lineTo(x - size * 0.7, y + size * 0.5);
+                ctx.lineTo(x - size * 0.7, y - size * 0.5);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = size * 0.1;
+                ctx.stroke();
+            },
+            'ninja': () => {
+                // Shuriken (ninja star)
+                ctx.fillStyle = '#808080';
+                ctx.beginPath();
+                for (let i = 0; i < 4; i++) {
+                    const angle = (i * Math.PI / 2);
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + Math.cos(angle) * size, y + Math.sin(angle) * size);
+                    ctx.lineTo(x + Math.cos(angle + Math.PI / 4) * size * 0.5, y + Math.sin(angle + Math.PI / 4) * size * 0.5);
+                }
+                ctx.closePath();
+                ctx.fill();
+            },
+            'chef': () => {
+                // Chef hat outline
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = size * 0.15;
+                ctx.beginPath();
+                ctx.arc(x, y - size * 0.3, size * 0.7, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.fillRect(x - size * 0.8, y + size * 0.3, size * 1.6, size * 0.3);
+            },
+            'doctor': () => {
+                // Medical cross
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(x - size * 0.3, y - size, size * 0.6, size * 2);
+                ctx.fillRect(x - size, y - size * 0.3, size * 2, size * 0.6);
+            },
+            'pilot': () => {
+                // Wings
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.ellipse(x - size * 0.5, y, size * 0.8, size * 0.4, -Math.PI / 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(x + size * 0.5, y, size * 0.8, size * 0.4, Math.PI / 6, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            'winter': () => {
+                // Snowflake
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = size * 0.15;
+                for (let i = 0; i < 6; i++) {
+                    const angle = i * Math.PI / 3;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + Math.cos(angle) * size, y + Math.sin(angle) * size);
+                    ctx.stroke();
+                }
+            },
+            'summer': () => {
+                // Sun
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(x, y, size * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+                for (let i = 0; i < 8; i++) {
+                    const angle = i * Math.PI / 4;
+                    ctx.beginPath();
+                    ctx.moveTo(x + Math.cos(angle) * size * 0.6, y + Math.sin(angle) * size * 0.6);
+                    ctx.lineTo(x + Math.cos(angle) * size, y + Math.sin(angle) * size);
+                    ctx.stroke();
+                }
+            },
+            '80s': () => {
+                // Cassette tape
+                ctx.fillStyle = '#FF1493';
+                ctx.fillRect(x - size, y - size * 0.6, size * 2, size * 1.2);
+                ctx.fillStyle = '#000000';
+                ctx.beginPath();
+                ctx.arc(x - size * 0.4, y, size * 0.3, 0, Math.PI * 2);
+                ctx.arc(x + size * 0.4, y, size * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            '90s': () => {
+                // CD disc
+                ctx.fillStyle = '#C0C0C0';
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#000000';
+                ctx.beginPath();
+                ctx.arc(x, y, size * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            'army': () => {
+                // Camo pattern
+                ctx.fillStyle = '#4B5320';
+                ctx.fillRect(x - size, y - size, size * 2, size * 2);
+                ctx.fillStyle = '#3D3D3D';
+                ctx.beginPath();
+                ctx.arc(x - size * 0.3, y - size * 0.3, size * 0.4, 0, Math.PI * 2);
+                ctx.arc(x + size * 0.4, y + size * 0.2, size * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            'navy': () => {
+                // Anchor
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = size * 0.15;
+                ctx.beginPath();
+                ctx.moveTo(x, y - size);
+                ctx.lineTo(x, y + size * 0.5);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(x - size * 0.5, y + size * 0.7, size * 0.3, 0, Math.PI);
+                ctx.arc(x + size * 0.5, y + size * 0.7, size * 0.3, 0, Math.PI);
+                ctx.stroke();
             }
         };
 
@@ -8990,7 +9232,72 @@
         'shoes_golf': { name: 'Golf Shoes', type: 'shoes', rarity: 'epic', color: '#FFFFFF', pattern: 'spikes', emoji: '👞', icon: '⛳' },
         'shoes_boxing': { name: 'Boxing Boots', type: 'shoes', rarity: 'epic', color: '#FF0000', pattern: 'high_ankle', emoji: '🥾', icon: '🥊' },
         'shoes_racing': { name: 'Racing Boots', type: 'shoes', rarity: 'epic', color: '#FF0000', pattern: 'fireproof', emoji: '🥾', icon: '🏎️' },
-        'shoes_cycling': { name: 'Cycling Shoes', type: 'shoes', rarity: 'epic', color: '#000000', pattern: 'clip_in', emoji: '👟', icon: '🚴' }
+        'shoes_cycling': { name: 'Cycling Shoes', type: 'shoes', rarity: 'epic', color: '#000000', pattern: 'clip_in', emoji: '👟', icon: '🚴' },
+
+        // FANTASY COLLECTION (Legendary)
+        'hat_wizard': { name: 'Wizard Hat', type: 'hat', rarity: 'legendary', color: '#4B0082', pattern: 'stars_moon', emoji: '🧙', icon: '✨' },
+        'shirt_wizard': { name: 'Wizard Robe', type: 'shirt', rarity: 'legendary', color: '#4B0082', pattern: 'mystical', emoji: '🧙', icon: '✨' },
+        'pants_wizard': { name: 'Wizard Pants', type: 'pants', rarity: 'legendary', color: '#2F1B3C', pattern: 'mystical', emoji: '🧙', icon: '✨' },
+        'shoes_wizard': { name: 'Wizard Boots', type: 'shoes', rarity: 'legendary', color: '#4B0082', pattern: 'curled_toe', emoji: '🥾', icon: '✨' },
+
+        'hat_knight': { name: 'Knight Helmet', type: 'hat', rarity: 'legendary', color: '#C0C0C0', pattern: 'metal', emoji: '⚔️', icon: '🛡️' },
+        'shirt_knight': { name: 'Knight Armor', type: 'shirt', rarity: 'legendary', color: '#C0C0C0', pattern: 'chainmail', emoji: '⚔️', icon: '🛡️' },
+        'pants_knight': { name: 'Knight Greaves', type: 'pants', rarity: 'legendary', color: '#808080', pattern: 'plated', emoji: '⚔️', icon: '🛡️' },
+        'shoes_knight': { name: 'Knight Boots', type: 'shoes', rarity: 'legendary', color: '#696969', pattern: 'armored', emoji: '🥾', icon: '🛡️' },
+
+        'hat_ninja': { name: 'Ninja Mask', type: 'hat', rarity: 'legendary', color: '#000000', pattern: 'stealth', emoji: '🥷', icon: '⚔️' },
+        'shirt_ninja': { name: 'Ninja Gi', type: 'shirt', rarity: 'legendary', color: '#1C1C1C', pattern: 'stealth', emoji: '🥷', icon: '⚔️' },
+        'pants_ninja': { name: 'Ninja Pants', type: 'pants', rarity: 'legendary', color: '#000000', pattern: 'stealth', emoji: '🥷', icon: '⚔️' },
+        'shoes_ninja': { name: 'Ninja Tabi', type: 'shoes', rarity: 'legendary', color: '#000000', pattern: 'split_toe', emoji: '🥾', icon: '⚔️' },
+
+        // PROFESSIONAL COLLECTION (Rare)
+        'hat_chef': { name: 'Chef Hat', type: 'hat', rarity: 'rare', color: '#FFFFFF', pattern: 'tall', emoji: '👨‍🍳', icon: '🍳' },
+        'shirt_chef': { name: 'Chef Coat', type: 'shirt', rarity: 'rare', color: '#FFFFFF', pattern: 'double_breasted', emoji: '👨‍🍳', icon: '🍳' },
+        'pants_chef': { name: 'Chef Pants', type: 'pants', rarity: 'rare', color: '#000000', pattern: 'checkered', emoji: '👨‍🍳', icon: '🍳' },
+        'shoes_chef': { name: 'Chef Clogs', type: 'shoes', rarity: 'rare', color: '#FFFFFF', pattern: 'slip_resistant', emoji: '👞', icon: '🍳' },
+
+        'hat_doctor': { name: 'Doctor Cap', type: 'hat', rarity: 'rare', color: '#00A8E8', pattern: 'surgical', emoji: '👨‍⚕️', icon: '⚕️' },
+        'shirt_doctor': { name: 'Doctor Coat', type: 'shirt', rarity: 'rare', color: '#FFFFFF', pattern: 'lab_coat', emoji: '👨‍⚕️', icon: '⚕️' },
+        'pants_doctor': { name: 'Doctor Scrubs', type: 'pants', rarity: 'rare', color: '#00A8E8', pattern: 'medical', emoji: '👨‍⚕️', icon: '⚕️' },
+        'shoes_doctor': { name: 'Doctor Shoes', type: 'shoes', rarity: 'rare', color: '#FFFFFF', pattern: 'comfortable', emoji: '👞', icon: '⚕️' },
+
+        'hat_pilot': { name: 'Pilot Cap', type: 'hat', rarity: 'rare', color: '#000080', pattern: 'aviator', emoji: '👨‍✈️', icon: '✈️' },
+        'shirt_pilot': { name: 'Pilot Uniform', type: 'shirt', rarity: 'rare', color: '#000080', pattern: 'wings', emoji: '👨‍✈️', icon: '✈️' },
+        'pants_pilot': { name: 'Pilot Pants', type: 'pants', rarity: 'rare', color: '#000080', pattern: 'formal', emoji: '👨‍✈️', icon: '✈️' },
+        'shoes_pilot': { name: 'Pilot Shoes', type: 'shoes', rarity: 'rare', color: '#000000', pattern: 'polished', emoji: '👞', icon: '✈️' },
+
+        // SEASONAL COLLECTION (Epic)
+        'hat_winter': { name: 'Winter Beanie', type: 'hat', rarity: 'epic', color: '#FF0000', pattern: 'knit', emoji: '🧣', icon: '❄️' },
+        'shirt_winter': { name: 'Winter Sweater', type: 'shirt', rarity: 'epic', color: '#006400', pattern: 'snowflake', emoji: '🧥', icon: '❄️' },
+        'pants_winter': { name: 'Winter Pants', type: 'pants', rarity: 'epic', color: '#2F4F4F', pattern: 'insulated', emoji: '👖', icon: '❄️' },
+        'shoes_winter': { name: 'Snow Boots', type: 'shoes', rarity: 'epic', color: '#8B4513', pattern: 'fur_lined', emoji: '🥾', icon: '❄️' },
+
+        'hat_summer': { name: 'Beach Hat', type: 'hat', rarity: 'epic', color: '#F4E4C1', pattern: 'straw', emoji: '🏖️', icon: '☀️' },
+        'shirt_summer': { name: 'Hawaiian Shirt', type: 'shirt', rarity: 'epic', color: '#FF6B9D', pattern: 'floral', emoji: '🌺', icon: '☀️' },
+        'pants_summer': { name: 'Beach Shorts', type: 'pants', rarity: 'epic', color: '#00CED1', pattern: 'tropical', emoji: '🩳', icon: '☀️' },
+        'shoes_summer': { name: 'Flip Flops', type: 'shoes', rarity: 'epic', color: '#FFD700', pattern: 'casual', emoji: '🩴', icon: '☀️' },
+
+        // RETRO COLLECTION (Rare)
+        'hat_80s': { name: '80s Headband', type: 'hat', rarity: 'rare', color: '#FF1493', pattern: 'neon', emoji: '🎧', icon: '📼' },
+        'shirt_80s': { name: '80s Windbreaker', type: 'shirt', rarity: 'rare', color: '#00FFFF', pattern: 'geometric', emoji: '👕', icon: '📼' },
+        'pants_80s': { name: '80s Track Pants', type: 'pants', rarity: 'rare', color: '#9400D3', pattern: 'stripes', emoji: '👖', icon: '📼' },
+        'shoes_80s': { name: '80s Sneakers', type: 'shoes', rarity: 'rare', color: '#FF1493', pattern: 'high_top', emoji: '👟', icon: '📼' },
+
+        'hat_90s': { name: '90s Snapback', type: 'hat', rarity: 'rare', color: '#000000', pattern: 'flat_brim', emoji: '🧢', icon: '💿' },
+        'shirt_90s': { name: '90s Jersey', type: 'shirt', rarity: 'rare', color: '#FF4500', pattern: 'oversized', emoji: '👕', icon: '💿' },
+        'pants_90s': { name: '90s Baggy Jeans', type: 'pants', rarity: 'rare', color: '#4169E1', pattern: 'baggy', emoji: '👖', icon: '💿' },
+        'shoes_90s': { name: '90s Platforms', type: 'shoes', rarity: 'rare', color: '#000000', pattern: 'chunky', emoji: '👟', icon: '💿' },
+
+        // MILITARY COLLECTION (Epic)
+        'hat_army': { name: 'Army Helmet', type: 'hat', rarity: 'epic', color: '#4B5320', pattern: 'camo', emoji: '🪖', icon: '🎖️' },
+        'shirt_army': { name: 'Army Uniform', type: 'shirt', rarity: 'epic', color: '#4B5320', pattern: 'camo', emoji: '🎖️', icon: '🎖️' },
+        'pants_army': { name: 'Army Cargo Pants', type: 'pants', rarity: 'epic', color: '#4B5320', pattern: 'camo', emoji: '🎖️', icon: '🎖️' },
+        'shoes_army': { name: 'Combat Boots', type: 'shoes', rarity: 'epic', color: '#3D3D3D', pattern: 'tactical', emoji: '🥾', icon: '🎖️' },
+
+        'hat_navy': { name: 'Navy Cap', type: 'hat', rarity: 'epic', color: '#000080', pattern: 'sailor', emoji: '⚓', icon: '⚓' },
+        'shirt_navy': { name: 'Navy Uniform', type: 'shirt', rarity: 'epic', color: '#FFFFFF', pattern: 'sailor', emoji: '⚓', icon: '⚓' },
+        'pants_navy': { name: 'Navy Pants', type: 'pants', rarity: 'epic', color: '#000080', pattern: 'formal', emoji: '⚓', icon: '⚓' },
+        'shoes_navy': { name: 'Navy Boots', type: 'shoes', rarity: 'epic', color: '#000000', pattern: 'polished', emoji: '🥾', icon: '⚓' }
     };
 
     // Enhanced Unified Chest System - Can give Characters OR Badges!
@@ -10962,6 +11269,7 @@
         // Show chest opening screen
         chestOpening.style.display = 'flex';
         characterReveal.textContent = '';
+        characterReveal.className = 'character-reveal'; // Reset class
         rarityGlow.className = 'rarity-glow';
         rarityText.textContent = '';
         particles.innerHTML = '';
@@ -10991,12 +11299,13 @@
                 addonCanvas.style.margin = '20px auto';
                 const addonCtx = addonCanvas.getContext('2d');
 
-                // Extract country/sport from key
+                // Extract country/sport/theme from key
                 const getCountrySport = (key) => {
                     if (!key) return { country: null, sport: null };
                     const country = key.includes('_') ? key.split('_')[1] : null;
                     const sports = ['soccer', 'basketball', 'baseball', 'football', 'hockey', 'tennis', 'golf', 'boxing', 'racing', 'cycling'];
-                    const sport = sports.find(s => key.includes(s));
+                    const themes = ['wizard', 'knight', 'ninja', 'chef', 'doctor', 'pilot', 'winter', 'summer', '80s', '90s', 'army', 'navy'];
+                    const sport = sports.find(s => key.includes(s)) || themes.find(t => key.includes(t));
                     return { country, sport };
                 };
 
@@ -11019,6 +11328,7 @@
 
                 characterReveal.innerHTML = '';
                 characterReveal.appendChild(addonCanvas);
+                characterReveal.className = 'character-reveal show'; // Make canvas visible
 
                 // Show rarity
                 rarityGlow.className = `rarity-glow ${addon.rarity} show`;
