@@ -80,7 +80,7 @@
         currentShopPlayer: 1, // For multiplayer: which player is shopping (1 or 2)
 
         // Single Player Data
-        coins: 100,
+        coins: 75,
         unlockedCharacters: ['Spider', 'Fire', 'Ice'],
         trophies: 0, // Trophy count for single player ONLY
 
@@ -177,13 +177,28 @@
         equippedBadges: [], // Currently equipped badges (3 max)
         player1EquippedBadges: [], // P1 equipped badges
         player2EquippedBadges: [], // P2 equipped badges
-        
+
+        // ADDONS SYSTEM - Cosmetic items!
+        unlockedAddons: [], // Single player addons
+        player1Addons: [], // Multiplayer addons for P1
+        player2Addons: [], // Multiplayer addons for P2
+        equippedAddons: { hat: null, shirt: null, pants: null, shoes: null }, // Currently equipped addons
+        player1EquippedAddons: { hat: null, shirt: null, pants: null, shoes: null }, // P1 equipped addons
+        player2EquippedAddons: { hat: null, shirt: null, pants: null, shoes: null }, // P2 equipped addons
+
         // Battle Data
         selectedCharacter: null,
         selectedPlayer2Character: null,
         selectedMap: null,
         selectedDifficulty: 'beginner',
-        battle: null
+        battle: null,
+
+        // Character Detail
+        currentDetailCharacter: null,
+        favoriteCharacters: [],
+
+        // Character-specific stats
+        characterStats: {}
     };
 
     // MASSIVE Character Database - 160+ CHARACTERS with ALL stats!
@@ -3093,15 +3108,15 @@
                 return;
             }
 
-            // NORMAL MODE - Calculate coins as HP difference
-            let player1Coins = Math.max(0, player1HP - player2HP);
-            let player2Coins = Math.max(0, player2HP - player1HP);
+            // NORMAL MODE - Calculate coins as 50% of remaining health (rounded down)
+            let player1Coins = Math.floor(player1HP * 0.5);
+            let player2Coins = Math.floor(player2HP * 0.5);
 
             // TROPHY SYSTEM - Calculate trophies based on time remaining!
             const timeRemainingSeconds = Math.ceil(this.timeLeft / 1000);
             let player1Trophies = 0;
             let player2Trophies = 0;
-            
+
             if (this.timeLeft <= 0) {
                 if (this.player1.health > this.player2.health) {
                     winner = 'Time Up - Player 1 Wins!';
@@ -3132,68 +3147,87 @@
                 }
             }
 
-            // TOURNAMENT MODE HANDLING
-            if (gameState.tournamentMode && gameState.tournamentData.isActive) {
-                this.handleTournamentResult(winner);
-                return;
-            }
-
-            // 2-PLAYER TOURNAMENT MODE HANDLING
-            if (gameState.tournament2PlayerMode && gameState.tournament2PlayerData.isActive) {
-                this.handle2PlayerTournamentResult(winner);
-                return;
-            }
-
-            // Award coins and trophies
-            let coinsMessage = '';
-            let trophyMessage = '';
-            
-            if (gameState.gameMode === 'multiplayer') {
-                if (winner.includes('Player 1')) {
-                    gameState.player1Coins = safeCoins(gameState.player1Coins + player1Coins);
-                    gameState.player1Trophies += player1Trophies;
-                    if (timeRemainingSeconds > 0) {
-                        gameState.player2Trophies = Math.max(0, gameState.player2Trophies - timeRemainingSeconds); // Lose trophies equal to time lost by
-                    }
-                    coinsMessage = `Player 1: +${player1Coins} coins\n(${player1HP} HP - ${player2HP} HP = ${player1Coins} coins)`;
-                    trophyMessage = `🏆 Player 1: +${player1Trophies} trophies (${timeRemainingSeconds}s left)\n🏆 Player 2: -${timeRemainingSeconds} trophies`;
-                } else if (winner.includes('Player 2')) {
-                    gameState.player2Coins = safeCoins(gameState.player2Coins + player2Coins);
-                    gameState.player2Trophies += player2Trophies;
-                    if (timeRemainingSeconds > 0) {
-                        gameState.player1Trophies = Math.max(0, gameState.player1Trophies - timeRemainingSeconds);
-                    }
-                    coinsMessage = `Player 2: +${player2Coins} coins\n(${player2HP} HP - ${player1HP} HP = ${player2Coins} coins)`;
-                    trophyMessage = `🏆 Player 2: +${player2Trophies} trophies (${timeRemainingSeconds}s left)\n🏆 Player 1: -${timeRemainingSeconds} trophies`;
-                } else {
-                    // Draw - no coins or trophies
-                    coinsMessage = `Draw: No coins awarded\n(P1: ${player1HP} HP | P2: ${player2HP} HP)`;
-                    trophyMessage = `🏆 Draw: No trophies changed`;
-                }
-                updateMultiplayerCoinsDisplay();
-                updateMultiplayerTrophyDisplay();
-            } else {
-                // Single player mode
-                if (winner.includes('Player 1')) {
-                    gameState.coins = safeCoins(gameState.coins + player1Coins);
-                    gameState.trophies += player1Trophies;
-                    coinsMessage = `+${player1Coins} coins earned!\n(${player1HP} HP - ${player2HP} HP = ${player1Coins} coins)`;
-                    trophyMessage = `🏆 +${player1Trophies} trophies earned! (${timeRemainingSeconds}s left)`;
-                } else {
-                    gameState.trophies = Math.max(0, gameState.trophies - timeRemainingSeconds); // Lose trophies equal to time you lost by
-                    coinsMessage = `+0 coins earned!\n(Defeated by CPU)`;
-                    trophyMessage = `🏆 -${timeRemainingSeconds} trophies lost (defeated in ${90 - timeRemainingSeconds}s)`;
-                }
-                updateSinglePlayerCoinsDisplay();
-                updateSinglePlayerTrophyDisplay();
-            }
-
-            showNotification(`${winner}\nMap: ${this.mapData.name}`);
-            setTimeout(() => endBattle(), 5000);
+            // Use handleGameEnd for all modes to ensure stats tracking
+            this.handleGameEnd(winner, player1Coins, player2Coins, player1Trophies, player2Trophies);
         }
 
         handleGameEnd(winner, player1Coins, player2Coins, player1Trophies, player2Trophies) {
             this.gameRunning = false;
+
+            // Track character-specific stats
+            const charKey = gameState.selectedCharacter;
+            console.log('🔍 Tracking stats for character:', charKey);
+            console.log('🔍 Winner:', winner);
+            console.log('🔍 Current characterStats object:', gameState.characterStats);
+
+            if (charKey) {
+                if (!gameState.characterStats) {
+                    console.log('⚠️ characterStats object does not exist! Creating it...');
+                    gameState.characterStats = {};
+                }
+
+                if (!gameState.characterStats[charKey]) {
+                    console.log('⚠️ Stats for', charKey, 'do not exist! Creating them...');
+                    gameState.characterStats[charKey] = {
+                        wins: 0,
+                        losses: 0,
+                        totalDamageDealt: 0,
+                        totalDamageTaken: 0,
+                        fastestWin: null,
+                        specialsUsed: 0,
+                        perfectWins: 0,
+                        comebackWins: 0
+                    };
+                }
+
+                const stats = gameState.characterStats[charKey];
+                const damageTaken = this.player1.maxHealth - this.player1.health;
+                const timeElapsed = (90000 - this.timeLeft) / 1000; // Battle time in seconds
+
+                console.log('📊 Before update - Stats:', JSON.stringify(stats));
+                console.log('📊 Damage taken:', damageTaken);
+                console.log('📊 Time elapsed:', timeElapsed);
+
+                // Track damage
+                stats.totalDamageTaken += damageTaken;
+
+                if (winner.includes('Player 1')) {
+                    // Win tracking
+                    stats.wins++;
+                    console.log('✅ Player 1 won! Incrementing wins to:', stats.wins);
+
+                    // Fastest win
+                    if (!stats.fastestWin || timeElapsed < stats.fastestWin) {
+                        stats.fastestWin = timeElapsed;
+                        console.log('⚡ New fastest win:', stats.fastestWin);
+                    }
+
+                    // Perfect win (no damage taken)
+                    if (damageTaken === 0) {
+                        stats.perfectWins++;
+                        console.log('✨ Perfect win! Total:', stats.perfectWins);
+                    }
+
+                    // Comeback win
+                    if (this.player1.health < this.player1.maxHealth * 0.3 && this.player2.health > this.player2.maxHealth * 0.7) {
+                        stats.comebackWins++;
+                        console.log('🔥 Comeback win! Total:', stats.comebackWins);
+                    }
+                } else if (winner.includes('Player 2')) {
+                    // Loss tracking
+                    stats.losses++;
+                    console.log('❌ Player 2 won! Incrementing losses to:', stats.losses);
+                }
+
+                console.log('📊 After update - Stats:', JSON.stringify(stats));
+
+                // Save character stats immediately
+                saveGameState();
+                console.log('💾 Character stats updated and saved for:', charKey);
+                console.log('💾 Full characterStats object:', JSON.stringify(gameState.characterStats));
+            } else {
+                console.log('⚠️ No selectedCharacter found! Cannot track stats.');
+            }
 
             // Track challenge progress for battle outcome
             if (winner.includes('Player 1')) {
@@ -5143,10 +5177,133 @@
                 ctx.textAlign = 'left';
             }
 
+            // DRAW EQUIPPED ADDONS IN BATTLE
+            const playerName = this === gameState.battle?.player1 ? 'player1' : 'player2';
+            const equippedAddons = gameState.gameMode === 'multiplayer'
+                ? (playerName === 'player1' ? gameState.player1EquippedAddons : gameState.player2EquippedAddons)
+                : gameState.equippedAddons;
+
+            if (equippedAddons) {
+                const shoeKey = equippedAddons.shoes;
+                const pantsKey = equippedAddons.pants;
+                const shirtKey = equippedAddons.shirt;
+                const hatKey = equippedAddons.hat;
+
+                // Extract country/sport from keys
+                const getCountrySport = (key) => {
+                    if (!key) return { country: null, sport: null };
+                    const country = key.includes('_') ? key.split('_')[1] : null;
+                    const sports = ['soccer', 'basketball', 'baseball', 'football', 'hockey', 'tennis', 'golf', 'boxing', 'racing', 'cycling'];
+                    const sport = sports.find(s => key.includes(s));
+                    return { country, sport };
+                };
+
+                // Calculate animated limb positions based on character state
+                let leftFootX, leftFootY, rightFootX, rightFootY;
+                let leftHandX, leftHandY, rightHandX, rightHandY;
+                let leftShoulderX, leftShoulderY, rightShoulderX, rightShoulderY;
+
+                if (!this.onGround) {
+                    // JUMPING/FALLING
+                    const jumpProgress = Math.abs(this.velocityY) / 19;
+
+                    if (this.velocityY < 0) {
+                        // Going up - legs bent
+                        const bendAmount = Math.min(jumpProgress * 15, 15);
+                        leftFootX = centerX - 12;
+                        leftFootY = centerY + 30 - bendAmount;
+                        rightFootX = centerX + 12;
+                        rightFootY = centerY + 30 - bendAmount;
+
+                        // Arms down
+                        const armDownAmount = Math.min(jumpProgress * 20, 20);
+                        leftHandX = centerX - 15;
+                        leftHandY = centerY + 15 + armDownAmount;
+                        rightHandX = centerX + 15;
+                        rightHandY = centerY + 15 + armDownAmount;
+                    } else {
+                        // Falling - legs extended
+                        leftFootX = centerX - 10;
+                        leftFootY = centerY + 35;
+                        rightFootX = centerX + 10;
+                        rightFootY = centerY + 35;
+
+                        // Arms up and wiggling
+                        const wiggleTime = Date.now() * 0.01;
+                        leftHandX = centerX - 20 + Math.sin(wiggleTime) * 5;
+                        leftHandY = centerY - 25;
+                        rightHandX = centerX + 20 + Math.sin(wiggleTime + 1) * 5;
+                        rightHandY = centerY - 25;
+                    }
+                } else if (this.isMoving) {
+                    // WALKING - alternating legs and pumping arms
+                    const leftLegOffset = Math.sin(this.animationFrame) * 8;
+                    const rightLegOffset = Math.sin(this.animationFrame + Math.PI) * 8;
+
+                    leftFootX = centerX - 10 + leftLegOffset;
+                    leftFootY = centerY + 35;
+                    rightFootX = centerX + 10 + rightLegOffset;
+                    rightFootY = centerY + 35;
+
+                    // Arms pump opposite to legs
+                    const leftArmPump = Math.sin(this.animationFrame) * 10;
+                    const rightArmPump = Math.sin(this.animationFrame + Math.PI) * 10;
+
+                    leftHandX = centerX - 12 + leftArmPump;
+                    leftHandY = centerY + 12;
+                    rightHandX = centerX + 12 + rightArmPump;
+                    rightHandY = centerY + 12;
+                } else {
+                    // IDLE - standing still
+                    leftFootX = centerX - 10;
+                    leftFootY = centerY + 35;
+                    rightFootX = centerX + 10;
+                    rightFootY = centerY + 35;
+
+                    leftHandX = centerX - 12;
+                    leftHandY = centerY;
+                    rightHandX = centerX + 12;
+                    rightHandY = centerY;
+                }
+
+                // Shoulders are always at fixed positions relative to body
+                leftShoulderX = centerX - 15;
+                leftShoulderY = centerY - 10;
+                rightShoulderX = centerX + 15;
+                rightShoulderY = centerY - 10;
+
+                // Draw SHOES on animated feet
+                if (shoeKey && addons[shoeKey]) {
+                    const { country, sport } = getCountrySport(shoeKey);
+                    // Left shoe follows left foot
+                    drawShoe(ctx, leftFootX - 5, leftFootY - 3, 10, 6, addons[shoeKey].color, country, sport);
+                    // Right shoe follows right foot
+                    drawShoe(ctx, rightFootX - 5, rightFootY - 3, 10, 6, addons[shoeKey].color, country, sport);
+                }
+
+                // Draw PANTS on animated legs
+                if (pantsKey && addons[pantsKey]) {
+                    const { country, sport } = getCountrySport(pantsKey);
+                    drawPants(ctx, centerX, centerY + 20, leftFootX, leftFootY - 3, rightFootX, rightFootY - 3, 8, addons[pantsKey].color, country, sport);
+                }
+
+                // Draw SHIRT on animated body and arms
+                if (shirtKey && addons[shirtKey]) {
+                    const { country, sport } = getCountrySport(shirtKey);
+                    drawShirt(ctx, centerX, centerY - 20, centerY + 20, leftShoulderX, leftShoulderY, rightShoulderX, rightShoulderY, leftHandX, leftHandY, rightHandX, rightHandY, 12, addons[shirtKey].color, country, sport);
+                }
+
+                // Draw HAT above head
+                if (hatKey && addons[hatKey]) {
+                    const { country, sport } = getCountrySport(hatKey);
+                    drawHat(ctx, centerX, centerY - 38, 15, 12, addons[hatKey].color, country, sport);
+                }
+            }
+
             // FLAG CAPTURE MODE - Draw flag in hand if holding it
             if (gameState.battle && gameState.battle.isFlagCaptureMode) {
-                const playerName = this === gameState.battle.player1 ? 'player1' : 'player2';
-                if (gameState.flagCapture.flagHolder === playerName) {
+                const flagPlayerName = this === gameState.battle.player1 ? 'player1' : 'player2';
+                if (gameState.flagCapture.flagHolder === flagPlayerName) {
                     // Draw flag in player's hand
                     ctx.font = '25px Arial';
                     ctx.textAlign = 'center';
@@ -5467,6 +5624,29 @@
             // Track special attack usage for challenges (only for Player 1)
             if (this === gameState.battle?.player1) {
                 trackChallengeProgress('special_used');
+
+                // Track character-specific special uses
+                const charKey = gameState.selectedCharacter;
+                if (charKey) {
+                    // Initialize stats if they don't exist
+                    if (!gameState.characterStats) {
+                        gameState.characterStats = {};
+                    }
+                    if (!gameState.characterStats[charKey]) {
+                        gameState.characterStats[charKey] = {
+                            wins: 0,
+                            losses: 0,
+                            totalDamageDealt: 0,
+                            totalDamageTaken: 0,
+                            fastestWin: null,
+                            specialsUsed: 0,
+                            perfectWins: 0,
+                            comebackWins: 0
+                        };
+                    }
+                    gameState.characterStats[charKey].specialsUsed++;
+                    console.log(`🌟 Special used! Total: ${gameState.characterStats[charKey].specialsUsed}`);
+                }
             }
 
             // Add stronger screen shake for special attack
@@ -5573,6 +5753,30 @@
             // 4. TRACK DAMAGE FOR CHALLENGES (only for Player 1 dealing damage)
             if (attacker && attacker === gameState.battle?.player1 && this !== gameState.battle?.player1) {
                 trackChallengeProgress('damage_dealt', { damage: finalDamage });
+
+                // Track character-specific damage dealt
+                const charKey = gameState.selectedCharacter;
+                if (charKey) {
+                    // Initialize stats if they don't exist
+                    if (!gameState.characterStats) {
+                        gameState.characterStats = {};
+                    }
+                    if (!gameState.characterStats[charKey]) {
+                        gameState.characterStats[charKey] = {
+                            wins: 0,
+                            losses: 0,
+                            totalDamageDealt: 0,
+                            totalDamageTaken: 0,
+                            fastestWin: null,
+                            specialsUsed: 0,
+                            perfectWins: 0,
+                            comebackWins: 0
+                        };
+                    }
+                    gameState.characterStats[charKey].totalDamageDealt += finalDamage;
+                    console.log(`💥 Damage dealt tracked: +${finalDamage} (Total: ${gameState.characterStats[charKey].totalDamageDealt})`);
+                    // Note: We don't save here to avoid too many saves, it will save at battle end
+                }
             }
 
             // 5. LIFESTEAL CALCULATION (for the attacker)
@@ -6516,7 +6720,10 @@
     function updateChallengesDisplay() {
         const container = document.getElementById('challengesContainer');
         container.innerHTML = '';
-        
+
+        // Recalculate all challenge progress before displaying
+        recalculateAllChallengeProgress();
+
         if (gameState.challenges.length === 0) {
             container.innerHTML = `
                 <div style="text-align: center; padding: 40px; color: #FFD700; font-size: 18px;">
@@ -6880,7 +7087,10 @@
         
         // Track challenge progress
         trackChallengeProgress('chest_opened', { type: 'badge' });
-        trackChallengeProgress('badge_collected', { rarity: badges[newBadges[0]].rarity });
+        // Track all badges collected from this chest
+        newBadges.forEach(badgeId => {
+            trackChallengeProgress('badge_collected', { rarity: badges[badgeId].rarity });
+        });
         trackChallengeProgress('coins_spent', { amount: price });
         
         // Show badge chest animation (create one for badges)
@@ -7136,6 +7346,657 @@
         showScreen('collectionScreen');
     }
 
+    // Show character detail screen
+    function showCharacterDetail(charKey) {
+        const char = characters[charKey];
+        if (!char) return;
+
+        // Store current character for favorite toggle
+        gameState.currentDetailCharacter = charKey;
+
+        // Update character display
+        document.getElementById('characterDetailName').textContent = char.name;
+        document.getElementById('characterDetailRarity').textContent = char.rarity.toUpperCase();
+        document.getElementById('characterDetailRarity').style.color = rarityColors[char.rarity];
+
+        // Update stats
+        const statsHTML = `
+            <div style="margin-bottom: 15px; padding: 15px; background: rgba(255,215,0,0.1); border-radius: 10px; border-left: 4px solid #FFD700;">
+                <div style="color: #FFD700; font-weight: bold;">❤️ MAX HEALTH</div>
+                <div style="font-size: 24px; color: #FFF;">${char.maxHealth}</div>
+            </div>
+            <div style="margin-bottom: 15px; padding: 15px; background: rgba(76,175,80,0.1); border-radius: 10px; border-left: 4px solid #4CAF50;">
+                <div style="color: #4CAF50; font-weight: bold;">⚔️ NORMAL DAMAGE</div>
+                <div style="font-size: 24px; color: #FFF;">${char.damage}</div>
+            </div>
+            <div style="margin-bottom: 15px; padding: 15px; background: rgba(255,68,68,0.1); border-radius: 10px; border-left: 4px solid #FF4444;">
+                <div style="color: #FF4444; font-weight: bold;">💥 SPECIAL DAMAGE</div>
+                <div style="font-size: 24px; color: #FFF;">${char.specialDamage}</div>
+            </div>
+            <div style="margin-bottom: 15px; padding: 15px; background: rgba(33,150,243,0.1); border-radius: 10px; border-left: 4px solid #2196F3;">
+                <div style="color: #2196F3; font-weight: bold;">🎯 SPECIAL TYPE</div>
+                <div style="font-size: 18px; color: #FFF;">${char.specialType === 'long' ? '📡 LONG RANGE' : '⚔️ CLOSE RANGE'}</div>
+            </div>
+            <div style="margin-bottom: 15px; padding: 15px; background: rgba(156,39,176,0.1); border-radius: 10px; border-left: 4px solid #9C27B0;">
+                <div style="color: #9C27B0; font-weight: bold;">⏱️ RELOAD TIME</div>
+                <div style="font-size: 24px; color: #FFF;">${(char.reloadTime/60).toFixed(1)}s</div>
+            </div>
+            <div style="margin-bottom: 15px; padding: 15px; background: rgba(255,152,0,0.1); border-radius: 10px; border-left: 4px solid #FF9800;">
+                <div style="color: #FF9800; font-weight: bold;">⚡ SPECIAL RELOAD</div>
+                <div style="font-size: 24px; color: #FFF;">${(char.specialReloadTime/60).toFixed(1)}s</div>
+            </div>
+        `;
+        document.getElementById('characterDetailStats').innerHTML = statsHTML;
+
+        // Update in-game stats
+        console.log('📊 Loading character stats for:', charKey);
+        console.log('📊 All character stats:', gameState.characterStats);
+        console.log('📊 Stats for this character:', gameState.characterStats[charKey]);
+
+        const charStats = gameState.characterStats[charKey] || {
+            wins: 0,
+            losses: 0,
+            totalDamageDealt: 0,
+            totalDamageTaken: 0,
+            fastestWin: null,
+            specialsUsed: 0,
+            perfectWins: 0,
+            comebackWins: 0
+        };
+
+        const winRate = charStats.wins + charStats.losses > 0
+            ? ((charStats.wins / (charStats.wins + charStats.losses)) * 100).toFixed(1)
+            : 0;
+
+        const inGameStatsHTML = `
+            <div style="margin-bottom: 12px; padding: 12px; background: rgba(76,175,80,0.15); border-radius: 8px; border-left: 3px solid #4CAF50;">
+                <div style="color: #4CAF50; font-weight: bold; font-size: 14px;">🏆 WINS</div>
+                <div style="font-size: 22px; color: #FFF;">${charStats.wins}</div>
+            </div>
+            <div style="margin-bottom: 12px; padding: 12px; background: rgba(255,68,68,0.15); border-radius: 8px; border-left: 3px solid #FF4444;">
+                <div style="color: #FF4444; font-weight: bold; font-size: 14px;">💀 LOSSES</div>
+                <div style="font-size: 22px; color: #FFF;">${charStats.losses}</div>
+            </div>
+            <div style="margin-bottom: 12px; padding: 12px; background: rgba(255,215,0,0.15); border-radius: 8px; border-left: 3px solid #FFD700;">
+                <div style="color: #FFD700; font-weight: bold; font-size: 14px;">📊 WIN RATE</div>
+                <div style="font-size: 22px; color: #FFF;">${winRate}%</div>
+            </div>
+            <div style="margin-bottom: 12px; padding: 12px; background: rgba(33,150,243,0.15); border-radius: 8px; border-left: 3px solid #2196F3;">
+                <div style="color: #2196F3; font-weight: bold; font-size: 14px;">⚡ FASTEST WIN</div>
+                <div style="font-size: 22px; color: #FFF;">${charStats.fastestWin ? charStats.fastestWin.toFixed(1) + 's' : 'N/A'}</div>
+            </div>
+            <div style="margin-bottom: 12px; padding: 12px; background: rgba(156,39,176,0.15); border-radius: 8px; border-left: 3px solid #9C27B0;">
+                <div style="color: #9C27B0; font-weight: bold; font-size: 14px;">💥 DAMAGE DEALT</div>
+                <div style="font-size: 22px; color: #FFF;">${charStats.totalDamageDealt.toLocaleString()}</div>
+            </div>
+            <div style="margin-bottom: 12px; padding: 12px; background: rgba(255,152,0,0.15); border-radius: 8px; border-left: 3px solid #FF9800;">
+                <div style="color: #FF9800; font-weight: bold; font-size: 14px;">🛡️ DAMAGE TAKEN</div>
+                <div style="font-size: 22px; color: #FFF;">${charStats.totalDamageTaken.toLocaleString()}</div>
+            </div>
+            <div style="margin-bottom: 12px; padding: 12px; background: rgba(233,30,99,0.15); border-radius: 8px; border-left: 3px solid #E91E63;">
+                <div style="color: #E91E63; font-weight: bold; font-size: 14px;">🌟 SPECIALS USED</div>
+                <div style="font-size: 22px; color: #FFF;">${charStats.specialsUsed}</div>
+            </div>
+            <div style="margin-bottom: 12px; padding: 12px; background: rgba(0,188,212,0.15); border-radius: 8px; border-left: 3px solid #00BCD4;">
+                <div style="color: #00BCD4; font-weight: bold; font-size: 14px;">✨ PERFECT WINS</div>
+                <div style="font-size: 22px; color: #FFF;">${charStats.perfectWins}</div>
+            </div>
+        `;
+        document.getElementById('characterInGameStats').innerHTML = inGameStatsHTML;
+
+        // Update favorite button
+        updateFavoriteButton();
+
+        // Update addon dropdowns
+        updateAddonDropdowns();
+
+        // Show the screen
+        showScreen('characterDetailScreen');
+
+        // Start dancing animation
+        startCharacterDanceAnimation(charKey);
+    }
+
+    // Update addon dropdown menus with unlocked addons
+    function updateAddonDropdowns() {
+        const playerAddons = gameState.gameMode === 'multiplayer'
+            ? (gameState.currentShopPlayer === 1 ? gameState.player1Addons : gameState.player2Addons)
+            : gameState.unlockedAddons;
+
+        const equippedAddons = gameState.gameMode === 'multiplayer'
+            ? (gameState.currentShopPlayer === 1 ? gameState.player1EquippedAddons : gameState.player2EquippedAddons)
+            : gameState.equippedAddons;
+
+        // Initialize equipped addons if needed
+        if (!equippedAddons || !equippedAddons.hat) {
+            if (!equippedAddons) {
+                if (gameState.gameMode === 'multiplayer') {
+                    if (gameState.currentShopPlayer === 1) {
+                        gameState.player1EquippedAddons = { hat: null, shirt: null, pants: null, shoes: null };
+                    } else {
+                        gameState.player2EquippedAddons = { hat: null, shirt: null, pants: null, shoes: null };
+                    }
+                } else {
+                    gameState.equippedAddons = { hat: null, shirt: null, pants: null, shoes: null };
+                }
+            } else {
+                equippedAddons.hat = null;
+                equippedAddons.shirt = null;
+                equippedAddons.pants = null;
+                equippedAddons.shoes = null;
+            }
+        }
+
+        // Update each dropdown
+        ['hat', 'shirt', 'pants', 'shoes'].forEach(type => {
+            const select = document.getElementById(`addon${type.charAt(0).toUpperCase() + type.slice(1)}Select`);
+            if (!select) return;
+
+            // Clear existing options except "None"
+            select.innerHTML = '<option value="">None</option>';
+
+            // Add unlocked addons of this type
+            if (playerAddons && playerAddons.length > 0) {
+                playerAddons.forEach(addonKey => {
+                    const addon = addons[addonKey];
+                    if (addon && addon.type === type) {
+                        const option = document.createElement('option');
+                        option.value = addonKey;
+                        option.textContent = `${addon.name} (${addon.rarity})`;
+                        option.style.color = addon.color;
+                        option.style.fontWeight = 'bold';
+                        select.appendChild(option);
+                    }
+                });
+            }
+
+            // Set current selection
+            const currentEquipped = gameState.gameMode === 'multiplayer'
+                ? (gameState.currentShopPlayer === 1 ? gameState.player1EquippedAddons : gameState.player2EquippedAddons)
+                : gameState.equippedAddons;
+
+            if (currentEquipped && currentEquipped[type]) {
+                select.value = currentEquipped[type];
+            }
+        });
+    }
+
+    // Equip an addon
+    window.equipAddon = function(type, addonKey) {
+        // Get the correct equipped addons object
+        let equippedAddons;
+        if (gameState.gameMode === 'multiplayer') {
+            if (gameState.currentShopPlayer === 1) {
+                if (!gameState.player1EquippedAddons) {
+                    gameState.player1EquippedAddons = { hat: null, shirt: null, pants: null, shoes: null };
+                }
+                equippedAddons = gameState.player1EquippedAddons;
+            } else {
+                if (!gameState.player2EquippedAddons) {
+                    gameState.player2EquippedAddons = { hat: null, shirt: null, pants: null, shoes: null };
+                }
+                equippedAddons = gameState.player2EquippedAddons;
+            }
+        } else {
+            if (!gameState.equippedAddons) {
+                gameState.equippedAddons = { hat: null, shirt: null, pants: null, shoes: null };
+            }
+            equippedAddons = gameState.equippedAddons;
+        }
+
+        if (addonKey === '') {
+            // Unequip
+            equippedAddons[type] = null;
+            showNotification(`${type.toUpperCase()} unequipped!`);
+        } else {
+            // Equip
+            const addon = addons[addonKey];
+            equippedAddons[type] = addonKey;
+            showNotification(`Equipped ${addon.name}!`);
+        }
+
+        // Save game state
+        saveGameState();
+
+        // The character will automatically update on the next animation frame
+        // No need to restart the animation
+    };
+
+    // Animate the character dancing with multiple dance moves
+    let danceAnimationFrame = null;
+    let currentDanceMove = 0;
+    let danceMoveTimer = 0;
+    const DANCE_MOVE_DURATION = 180; // frames per dance move (3 seconds at 60fps)
+
+    function startCharacterDanceAnimation(charKey) {
+        const char = characters[charKey];
+        const canvas = document.getElementById('characterDetailCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let time = 0;
+        currentDanceMove = Math.floor(Math.random() * 8); // Start with random dance
+        danceMoveTimer = 0;
+
+        // Dance move functions
+        const danceMoves = [
+            // 1. Wave Dance
+            (t) => ({
+                bounce: Math.sin(t * 0.1) * 30,
+                sway: Math.sin(t * 0.08) * 15,
+                leftArmX: -60 - Math.sin(t * 0.12) * 20,
+                leftArmY: -20 + Math.sin(t * 0.12) * 20,
+                leftHandX: -80 - Math.sin(t * 0.12) * 20,
+                leftHandY: 10 + Math.sin(t * 0.12) * 20,
+                rightArmX: 60 + Math.sin(t * 0.12) * 20,
+                rightArmY: -20 - Math.sin(t * 0.12) * 20,
+                rightHandX: 80 + Math.sin(t * 0.12) * 20,
+                rightHandY: 10 - Math.sin(t * 0.12) * 20,
+                leftLegX: -40 - Math.sin(t * 0.15) * 25,
+                leftLegY: 150,
+                leftFootX: -50 - Math.sin(t * 0.15) * 25,
+                leftFootY: 220,
+                rightLegX: 40 + Math.sin(t * 0.15) * 25,
+                rightLegY: 150,
+                rightFootX: 50 + Math.sin(t * 0.15) * 25,
+                rightFootY: 220,
+                rotation: 0
+            }),
+
+            // 2. Jump Dance
+            (t) => ({
+                bounce: Math.abs(Math.sin(t * 0.15)) * 80,
+                sway: 0,
+                leftArmX: -70,
+                leftArmY: -80 - Math.abs(Math.sin(t * 0.15)) * 30,
+                leftHandX: -80,
+                leftHandY: -120 - Math.abs(Math.sin(t * 0.15)) * 30,
+                rightArmX: 70,
+                rightArmY: -80 - Math.abs(Math.sin(t * 0.15)) * 30,
+                rightHandX: 80,
+                rightHandY: -120 - Math.abs(Math.sin(t * 0.15)) * 30,
+                leftLegX: -30,
+                leftLegY: 140,
+                leftFootX: -35,
+                leftFootY: 200,
+                rightLegX: 30,
+                rightLegY: 140,
+                rightFootX: 35,
+                rightFootY: 200,
+                rotation: 0
+            }),
+
+            // 3. Spin Dance
+            (t) => ({
+                bounce: 20,
+                sway: 0,
+                leftArmX: -70 * Math.cos(t * 0.08),
+                leftArmY: -70 * Math.sin(t * 0.08),
+                leftHandX: -90 * Math.cos(t * 0.08),
+                leftHandY: -90 * Math.sin(t * 0.08),
+                rightArmX: 70 * Math.cos(t * 0.08),
+                rightArmY: 70 * Math.sin(t * 0.08),
+                rightHandX: 90 * Math.cos(t * 0.08),
+                rightHandY: 90 * Math.sin(t * 0.08),
+                leftLegX: -35,
+                leftLegY: 150,
+                leftFootX: -40,
+                leftFootY: 220,
+                rightLegX: 35,
+                rightLegY: 150,
+                rightFootX: 40,
+                rightFootY: 220,
+                rotation: (t * 0.08) % (Math.PI * 2)
+            }),
+
+            // 4. Robot Dance
+            (t) => {
+                const step = Math.floor(t / 20) % 4;
+                return {
+                    bounce: 0,
+                    sway: step % 2 === 0 ? -20 : 20,
+                    leftArmX: step === 0 || step === 2 ? -70 : -40,
+                    leftArmY: step === 0 || step === 2 ? -40 : 0,
+                    leftHandX: step === 0 || step === 2 ? -90 : -40,
+                    leftHandY: step === 0 || step === 2 ? -40 : 30,
+                    rightArmX: step === 1 || step === 3 ? 70 : 40,
+                    rightArmY: step === 1 || step === 3 ? -40 : 0,
+                    rightHandX: step === 1 || step === 3 ? 90 : 40,
+                    rightHandY: step === 1 || step === 3 ? -40 : 30,
+                    leftLegX: step % 2 === 0 ? -50 : -30,
+                    leftLegY: 150,
+                    leftFootX: step % 2 === 0 ? -60 : -30,
+                    leftFootY: 220,
+                    rightLegX: step % 2 === 1 ? 50 : 30,
+                    rightLegY: 150,
+                    rightFootX: step % 2 === 1 ? 60 : 30,
+                    rightFootY: 220,
+                    rotation: 0
+                };
+            },
+
+            // 5. Floss Dance
+            (t) => {
+                const swing = Math.sin(t * 0.2);
+                return {
+                    bounce: Math.abs(Math.sin(t * 0.1)) * 15,
+                    sway: swing * 25,
+                    leftArmX: swing > 0 ? -30 : -80,
+                    leftArmY: swing > 0 ? 40 : -20,
+                    leftHandX: swing > 0 ? -30 : -100,
+                    leftHandY: swing > 0 ? 80 : -20,
+                    rightArmX: swing < 0 ? 30 : 80,
+                    rightArmY: swing < 0 ? 40 : -20,
+                    rightHandX: swing < 0 ? 30 : 100,
+                    rightHandY: swing < 0 ? 80 : -20,
+                    leftLegX: -35,
+                    leftLegY: 150,
+                    leftFootX: -40,
+                    leftFootY: 220,
+                    rightLegX: 35,
+                    rightLegY: 150,
+                    rightFootX: 40,
+                    rightFootY: 220,
+                    rotation: 0
+                };
+            },
+
+            // 6. Dab
+            (t) => {
+                const dab = Math.sin(t * 0.1) > 0;
+                return {
+                    bounce: Math.abs(Math.sin(t * 0.1)) * 20,
+                    sway: 0,
+                    leftArmX: dab ? -90 : -50,
+                    leftArmY: dab ? -100 : -30,
+                    leftHandX: dab ? -110 : -60,
+                    leftHandY: dab ? -120 : -10,
+                    rightArmX: dab ? 40 : 50,
+                    rightArmY: dab ? -60 : -30,
+                    rightHandX: dab ? 50 : 60,
+                    rightHandY: dab ? -80 : -10,
+                    leftLegX: -35,
+                    leftLegY: 150,
+                    leftFootX: -40,
+                    leftFootY: 220,
+                    rightLegX: 35,
+                    rightLegY: 150,
+                    rightFootX: 40,
+                    rightFootY: 220,
+                    rotation: dab ? -0.3 : 0
+                };
+            },
+
+            // 7. Running Man
+            (t) => {
+                const step = Math.sin(t * 0.2);
+                return {
+                    bounce: Math.abs(step) * 25,
+                    sway: 0,
+                    leftArmX: -50 - step * 30,
+                    leftArmY: -20 + step * 40,
+                    leftHandX: -60 - step * 40,
+                    leftHandY: 20 + step * 60,
+                    rightArmX: 50 + step * 30,
+                    rightArmY: -20 - step * 40,
+                    rightHandX: 60 + step * 40,
+                    rightHandY: 20 - step * 60,
+                    leftLegX: -40 + step * 30,
+                    leftLegY: 150 - step * 30,
+                    leftFootX: -50 + step * 40,
+                    leftFootY: 220 - step * 50,
+                    rightLegX: 40 - step * 30,
+                    rightLegY: 150 + step * 30,
+                    rightFootX: 50 - step * 40,
+                    rightFootY: 220 + step * 50,
+                    rotation: 0
+                };
+            },
+
+            // 8. Disco Point
+            (t) => {
+                const point = Math.floor(t / 30) % 4;
+                return {
+                    bounce: Math.sin(t * 0.15) * 20,
+                    sway: Math.sin(t * 0.1) * 10,
+                    leftArmX: point === 0 ? -80 : point === 2 ? -50 : -40,
+                    leftArmY: point === 0 ? -80 : point === 2 ? -30 : 0,
+                    leftHandX: point === 0 ? -100 : point === 2 ? -60 : -40,
+                    leftHandY: point === 0 ? -100 : point === 2 ? -10 : 30,
+                    rightArmX: point === 1 ? 80 : point === 3 ? 50 : 40,
+                    rightArmY: point === 1 ? -80 : point === 3 ? -30 : 0,
+                    rightHandX: point === 1 ? 100 : point === 3 ? 60 : 40,
+                    rightHandY: point === 1 ? -100 : point === 3 ? -10 : 30,
+                    leftLegX: -35 - Math.sin(t * 0.2) * 15,
+                    leftLegY: 150,
+                    leftFootX: -40 - Math.sin(t * 0.2) * 20,
+                    leftFootY: 220,
+                    rightLegX: 35 + Math.sin(t * 0.2) * 15,
+                    rightLegY: 150,
+                    rightFootX: 40 + Math.sin(t * 0.2) * 20,
+                    rightFootY: 220,
+                    rotation: 0
+                };
+            }
+        ];
+
+        function animate() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Change dance move periodically
+            danceMoveTimer++;
+            if (danceMoveTimer >= DANCE_MOVE_DURATION) {
+                danceMoveTimer = 0;
+                currentDanceMove = (currentDanceMove + 1) % danceMoves.length;
+            }
+
+            // Get current dance pose
+            const pose = danceMoves[currentDanceMove](time);
+
+            // Center position
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Draw stickman character
+            ctx.save();
+            ctx.translate(centerX + pose.sway, centerY - pose.bounce);
+            ctx.rotate(pose.rotation);
+
+            // Set character color
+            ctx.strokeStyle = char.color;
+            ctx.fillStyle = char.color;
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Add glow effect
+            ctx.shadowBlur = 30;
+            ctx.shadowColor = char.color;
+
+            // Head (emoji)
+            ctx.font = '120px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(char.emoji, 0, -150);
+
+            // Body
+            ctx.beginPath();
+            ctx.moveTo(0, -80);
+            ctx.lineTo(0, 80);
+            ctx.stroke();
+
+            // Left arm
+            ctx.beginPath();
+            ctx.moveTo(0, -40);
+            ctx.lineTo(pose.leftArmX, pose.leftArmY);
+            ctx.lineTo(pose.leftHandX, pose.leftHandY);
+            ctx.stroke();
+
+            // Right arm
+            ctx.beginPath();
+            ctx.moveTo(0, -40);
+            ctx.lineTo(pose.rightArmX, pose.rightArmY);
+            ctx.lineTo(pose.rightHandX, pose.rightHandY);
+            ctx.stroke();
+
+            // Left leg
+            ctx.beginPath();
+            ctx.moveTo(0, 80);
+            ctx.lineTo(pose.leftLegX, pose.leftLegY);
+            ctx.lineTo(pose.leftFootX, pose.leftFootY);
+            ctx.stroke();
+
+            // Right leg
+            ctx.beginPath();
+            ctx.moveTo(0, 80);
+            ctx.lineTo(pose.rightLegX, pose.rightLegY);
+            ctx.lineTo(pose.rightFootX, pose.rightFootY);
+            ctx.stroke();
+
+            // Draw hands (circles)
+            ctx.beginPath();
+            ctx.arc(pose.leftHandX, pose.leftHandY, 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(pose.rightHandX, pose.rightHandY, 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw feet (circles)
+            ctx.beginPath();
+            ctx.arc(pose.leftFootX, pose.leftFootY, 15, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(pose.rightFootX, pose.rightFootY, 15, 0, Math.PI * 2);
+            ctx.fill();
+
+            // DRAW EQUIPPED ADDONS
+            const equippedAddons = gameState.gameMode === 'multiplayer'
+                ? (gameState.currentShopPlayer === 1 ? gameState.player1EquippedAddons : gameState.player2EquippedAddons)
+                : gameState.equippedAddons;
+
+            if (equippedAddons) {
+                const shoeKey = equippedAddons.shoes;
+                const pantsKey = equippedAddons.pants;
+                const shirtKey = equippedAddons.shirt;
+                const hatKey = equippedAddons.hat;
+
+                // Extract country/sport from keys
+                const getCountrySport = (key) => {
+                    if (!key) return { country: null, sport: null };
+                    const country = key.includes('_') ? key.split('_')[1] : null;
+                    const sports = ['soccer', 'basketball', 'baseball', 'football', 'hockey', 'tennis', 'golf', 'boxing', 'racing', 'cycling'];
+                    const sport = sports.find(s => key.includes(s));
+                    return { country, sport };
+                };
+
+                // Draw SHOES on animated feet
+                if (shoeKey && addons[shoeKey]) {
+                    const { country, sport } = getCountrySport(shoeKey);
+                    // Left shoe - follows foot animation
+                    drawShoe(ctx, pose.leftFootX - 25, pose.leftFootY - 10, 50, 20, addons[shoeKey].color, country, sport);
+                    // Right shoe - follows foot animation
+                    drawShoe(ctx, pose.rightFootX - 25, pose.rightFootY - 10, 50, 20, addons[shoeKey].color, country, sport);
+                }
+
+                // Draw PANTS on animated legs
+                if (pantsKey && addons[pantsKey]) {
+                    const { country, sport } = getCountrySport(pantsKey);
+                    drawPants(ctx, 0, 80, pose.leftFootX, pose.leftFootY - 15, pose.rightFootX, pose.rightFootY - 15, 30, addons[pantsKey].color, country, sport);
+                }
+
+                // Draw SHIRT on animated body and arms
+                if (shirtKey && addons[shirtKey]) {
+                    const { country, sport } = getCountrySport(shirtKey);
+                    drawShirt(ctx, 0, -80, 80, -60, -40, 60, -40, pose.leftHandX, pose.leftHandY, pose.rightHandX, pose.rightHandY, 40, addons[shirtKey].color, country, sport);
+                }
+
+                // Draw HAT above animated head
+                if (hatKey && addons[hatKey]) {
+                    const { country, sport } = getCountrySport(hatKey);
+                    drawHat(ctx, 0, -200, 50, 40, addons[hatKey].color, country, sport);
+                }
+
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.restore();
+
+            time++;
+            danceAnimationFrame = requestAnimationFrame(animate);
+        }
+
+        // Stop previous animation if any
+        if (danceAnimationFrame) {
+            cancelAnimationFrame(danceAnimationFrame);
+        }
+
+        animate();
+    }
+
+    // Close character detail screen
+    function closeCharacterDetail() {
+        // Stop animation
+        if (danceAnimationFrame) {
+            cancelAnimationFrame(danceAnimationFrame);
+            danceAnimationFrame = null;
+        }
+        showCollection();
+    }
+
+    // Toggle favorite status
+    function toggleFavorite() {
+        if (!gameState.currentDetailCharacter) return;
+
+        // Initialize favorites array if it doesn't exist
+        if (!gameState.favoriteCharacters) {
+            gameState.favoriteCharacters = [];
+        }
+
+        const charKey = gameState.currentDetailCharacter;
+        const index = gameState.favoriteCharacters.indexOf(charKey);
+
+        if (index > -1) {
+            // Remove from favorites
+            gameState.favoriteCharacters.splice(index, 1);
+            showNotification(`${characters[charKey].emoji} ${characters[charKey].name} removed from favorites!`);
+        } else {
+            // Add to favorites
+            gameState.favoriteCharacters.push(charKey);
+            showNotification(`${characters[charKey].emoji} ${characters[charKey].name} added to favorites! ⭐`);
+        }
+
+        // Update button
+        updateFavoriteButton();
+
+        // Save game state
+        saveGameState();
+    }
+
+    // Update favorite button appearance
+    function updateFavoriteButton() {
+        if (!gameState.currentDetailCharacter) return;
+
+        if (!gameState.favoriteCharacters) {
+            gameState.favoriteCharacters = [];
+        }
+
+        const charKey = gameState.currentDetailCharacter;
+        const isFavorite = gameState.favoriteCharacters.includes(charKey);
+        const btn = document.getElementById('favoriteBtn');
+
+        if (isFavorite) {
+            btn.textContent = '⭐ FAVORITED!';
+            btn.style.background = 'linear-gradient(45deg, #4CAF50, #45a049)';
+            btn.style.borderColor = '#4CAF50';
+        } else {
+            btn.textContent = '⭐ Favorite';
+            btn.style.background = 'linear-gradient(45deg, #FFD700, #FFA500)';
+            btn.style.borderColor = '#FFD700';
+        }
+    }
+
     function showCharacterSelect() {
         // In tournament mode, check if characters are already locked for the series
         if (gameState.tournamentMode && gameState.tournamentData.isActive) {
@@ -7247,6 +8108,53 @@
         } else {
             document.getElementById('player1Name').textContent = characters[gameState.selectedCharacter].name;
             document.getElementById('player2Name').textContent = `CPU: ${characters[enemyChar].name} (${gameState.selectedDifficulty.toUpperCase()})`;
+        }
+
+        // Display equipped addons
+        const player1AddonsDiv = document.getElementById('player1Addons');
+        const player2AddonsDiv = document.getElementById('player2Addons');
+
+        const player1Addons = gameState.gameMode === 'multiplayer' ? gameState.player1EquippedAddons : gameState.equippedAddons;
+        const player2Addons = gameState.gameMode === 'multiplayer' ? gameState.player2EquippedAddons : null;
+
+        // Display Player 1 addons
+        if (player1Addons && (player1Addons.hat || player1Addons.shirt || player1Addons.pants || player1Addons.shoes)) {
+            let addonText = '<div style="font-weight: bold; margin-bottom: 3px;">Equipped:</div>';
+            if (player1Addons.hat && addons[player1Addons.hat]) {
+                addonText += `<div>Hat: ${addons[player1Addons.hat].name}</div>`;
+            }
+            if (player1Addons.shirt && addons[player1Addons.shirt]) {
+                addonText += `<div>Shirt: ${addons[player1Addons.shirt].name}</div>`;
+            }
+            if (player1Addons.pants && addons[player1Addons.pants]) {
+                addonText += `<div>Pants: ${addons[player1Addons.pants].name}</div>`;
+            }
+            if (player1Addons.shoes && addons[player1Addons.shoes]) {
+                addonText += `<div>Shoes: ${addons[player1Addons.shoes].name}</div>`;
+            }
+            player1AddonsDiv.innerHTML = addonText;
+        } else {
+            player1AddonsDiv.innerHTML = '';
+        }
+
+        // Display Player 2 addons (only in multiplayer)
+        if (gameState.gameMode === 'multiplayer' && player2Addons && (player2Addons.hat || player2Addons.shirt || player2Addons.pants || player2Addons.shoes)) {
+            let addonText = '<div style="font-weight: bold; margin-bottom: 3px;">Equipped:</div>';
+            if (player2Addons.hat && addons[player2Addons.hat]) {
+                addonText += `<div>Hat: ${addons[player2Addons.hat].name}</div>`;
+            }
+            if (player2Addons.shirt && addons[player2Addons.shirt]) {
+                addonText += `<div>Shirt: ${addons[player2Addons.shirt].name}</div>`;
+            }
+            if (player2Addons.pants && addons[player2Addons.pants]) {
+                addonText += `<div>Pants: ${addons[player2Addons.pants].name}</div>`;
+            }
+            if (player2Addons.shoes && addons[player2Addons.shoes]) {
+                addonText += `<div>Shoes: ${addons[player2Addons.shoes].name}</div>`;
+            }
+            player2AddonsDiv.innerHTML = addonText;
+        } else {
+            player2AddonsDiv.innerHTML = '';
         }
         
         console.log('=== STARTING BATTLE ===');
@@ -7367,6 +8275,9 @@
             gameState.completedChallenges = [];
         }
 
+        // Recalculate all challenge progress before checking
+        recalculateAllChallengeProgress();
+
         // Get current challenges based on game mode
         let challenges = gameState.challenges || [];
 
@@ -7398,6 +8309,9 @@
         for (let i = 0; i < numCompleted; i++) {
             generateNewChallenge();
         }
+
+        // Save game state after processing completed challenges
+        saveGameState();
 
         return completedChallenges;
     }
@@ -7499,59 +8413,631 @@
         'omniscience': { name: 'Omniscience', emoji: '👁️', rarity: 'legendary', effect: 'accuracy', value: 50, description: '+50% Accuracy & Never Miss' }
     };
 
-    // Enhanced Chest System with MEGA CHEST and CHOOSE YOUR CHARACTER!
-    function buyChest(chestType = 'common') {
-        const chestPrices = { 
-            common: 75, 
-            rare: 150,  // UPDATED: 150 coins (was 100)
-            epic: 300,  // UPDATED: 300 coins (was 150)
-            legendary: 500,  // UPDATED: 500 coins (was 300)
-            mega: 600,  // UPDATED: 600 coins (was 400) - Same odds as rare chest!
-            guaranteed: 1000,  // UPDATED: 1000 coins (was 600)
-            choose: 1500,  // UPDATED: 1500 coins (was 1000)
-            // NEW BADGE CHESTS!
-            'common_badge': 100,
-            'rare_badge': 200,
-            'mega_badge': 400,
-            'guaranteed_legendary_badge': 800,
-            'choose_badge': 1200
+    // ADDON DRAWING HELPER FUNCTIONS
+
+    // Draw a complete shoe item with logo
+    function drawShoe(ctx, x, y, width, height, color, country, sport) {
+        ctx.save();
+
+        // Shoe base (rounded toe)
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.roundRect(x, y, width, height, height * 0.3);
+        ctx.fill();
+
+        // Shoe sole (darker)
+        ctx.fillStyle = '#333';
+        ctx.fillRect(x, y + height * 0.7, width, height * 0.3);
+
+        // Shoe laces area (lighter)
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.fillRect(x + width * 0.2, y + height * 0.1, width * 0.6, height * 0.4);
+
+        // Draw logo on side of shoe
+        if (country) {
+            drawCountryFlag(ctx, x + width * 0.1, y + height * 0.2, width * 0.3, height * 0.4, country);
+        } else if (sport) {
+            drawSportLogo(ctx, x + width * 0.25, y + height * 0.4, height * 0.3, sport);
+        }
+
+        ctx.restore();
+    }
+
+    // Draw complete pants item with logo
+    function drawPants(ctx, waistX, waistY, leftFootX, leftFootY, rightFootX, rightFootY, width, color, country, sport) {
+        ctx.save();
+
+        // Left leg
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(waistX - width/2, waistY);
+        ctx.lineTo(waistX - width/2 - 2, waistY);
+        ctx.lineTo(leftFootX - width/2, leftFootY);
+        ctx.lineTo(leftFootX + width/2, leftFootY);
+        ctx.lineTo(waistX + 2, waistY);
+        ctx.lineTo(waistX, waistY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Right leg
+        ctx.beginPath();
+        ctx.moveTo(waistX, waistY);
+        ctx.lineTo(waistX + width/2 + 2, waistY);
+        ctx.lineTo(rightFootX + width/2, rightFootY);
+        ctx.lineTo(rightFootX - width/2, rightFootY);
+        ctx.lineTo(waistX - 2, waistY);
+        ctx.lineTo(waistX, waistY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Waistband (darker)
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(waistX - width, waistY - width * 0.15, width * 2, width * 0.15);
+
+        // Belt loops
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        for (let i = -1; i <= 1; i++) {
+            ctx.fillRect(waistX + i * width * 0.4, waistY - width * 0.15, width * 0.1, width * 0.2);
+        }
+
+        // Draw logo on thigh area
+        if (country) {
+            drawCountryFlag(ctx, waistX - width * 0.6, waistY + width * 0.5, width * 1.2, width * 0.8, country);
+        } else if (sport) {
+            drawSportLogo(ctx, waistX, waistY + width, width * 0.4, sport);
+        }
+
+        ctx.restore();
+    }
+
+    // Draw complete shirt item with logo
+    function drawShirt(ctx, neckX, neckY, waistY, leftShoulderX, leftShoulderY, rightShoulderX, rightShoulderY, leftHandX, leftHandY, rightHandX, rightHandY, width, color, country, sport) {
+        ctx.save();
+
+        // Torso
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(leftShoulderX, leftShoulderY);
+        ctx.lineTo(rightShoulderX, rightShoulderY);
+        ctx.lineTo(neckX + width, waistY);
+        ctx.lineTo(neckX - width, waistY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Left sleeve
+        ctx.beginPath();
+        ctx.moveTo(leftShoulderX, leftShoulderY);
+        ctx.lineTo(leftShoulderX - width * 0.3, leftShoulderY);
+        ctx.lineTo(leftHandX - width * 0.2, leftHandY);
+        ctx.lineTo(leftHandX + width * 0.2, leftHandY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Right sleeve
+        ctx.beginPath();
+        ctx.moveTo(rightShoulderX, rightShoulderY);
+        ctx.lineTo(rightShoulderX + width * 0.3, rightShoulderY);
+        ctx.lineTo(rightHandX + width * 0.2, rightHandY);
+        ctx.lineTo(rightHandX - width * 0.2, rightHandY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Collar
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.arc(neckX, neckY, width * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw logo on chest
+        const chestY = neckY + (waistY - neckY) * 0.4;
+        if (country) {
+            drawCountryFlag(ctx, neckX - width * 0.8, chestY - width * 0.4, width * 1.6, width * 0.8, country);
+        } else if (sport) {
+            drawSportLogo(ctx, neckX, chestY, width * 0.5, sport);
+        }
+
+        ctx.restore();
+    }
+
+    // Draw complete hat item with logo
+    function drawHat(ctx, x, y, width, height, color, country, sport) {
+        ctx.save();
+
+        // Hat brim (wider)
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.ellipse(x, y, width * 1.2, height * 0.3, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Hat crown (rounded top)
+        ctx.beginPath();
+        ctx.ellipse(x, y - height * 0.3, width * 0.8, height * 0.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(x - width * 0.8, y - height * 0.3, width * 1.6, height * 0.3);
+
+        // Hat band (darker)
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(x - width * 0.85, y - height * 0.1, width * 1.7, height * 0.15);
+
+        // Draw logo on front of hat
+        if (country) {
+            drawCountryFlag(ctx, x - width * 0.6, y - height * 0.5, width * 1.2, height * 0.3, country);
+        } else if (sport) {
+            drawSportLogo(ctx, x, y - height * 0.35, height * 0.25, sport);
+        }
+
+        ctx.restore();
+    }
+
+    // Draw country flag pattern on addon
+    function drawCountryFlag(ctx, x, y, width, height, country) {
+        ctx.save();
+        const flags = {
+            'usa': () => {
+                // Red and white stripes with blue canton
+                for (let i = 0; i < 7; i++) {
+                    ctx.fillStyle = i % 2 === 0 ? '#B22234' : '#FFFFFF';
+                    ctx.fillRect(x, y + (i * height / 7), width, height / 7);
+                }
+                ctx.fillStyle = '#3C3B6E';
+                ctx.fillRect(x, y, width * 0.4, height * 0.5);
+            },
+            'canada': () => {
+                // Red-White-Red with maple leaf
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(x, y, width * 0.25, height);
+                ctx.fillRect(x + width * 0.75, y, width * 0.25, height);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(x + width * 0.25, y, width * 0.5, height);
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(x + width * 0.45, y + height * 0.35, width * 0.1, height * 0.3);
+            },
+            'mexico': () => {
+                // Green-White-Red vertical stripes
+                ctx.fillStyle = '#006847';
+                ctx.fillRect(x, y, width / 3, height);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(x + width / 3, y, width / 3, height);
+                ctx.fillStyle = '#CE1126';
+                ctx.fillRect(x + 2 * width / 3, y, width / 3, height);
+            },
+            'brazil': () => {
+                // Green background with yellow diamond
+                ctx.fillStyle = '#009C3B';
+                ctx.fillRect(x, y, width, height);
+                ctx.fillStyle = '#FFDF00';
+                ctx.beginPath();
+                ctx.moveTo(x + width / 2, y + height * 0.2);
+                ctx.lineTo(x + width * 0.8, y + height / 2);
+                ctx.lineTo(x + width / 2, y + height * 0.8);
+                ctx.lineTo(x + width * 0.2, y + height / 2);
+                ctx.closePath();
+                ctx.fill();
+            },
+            'uk': () => {
+                // Union Jack simplified
+                ctx.fillStyle = '#012169';
+                ctx.fillRect(x, y, width, height);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(x, y + height * 0.4, width, height * 0.2);
+                ctx.fillRect(x + width * 0.4, y, width * 0.2, height);
+            },
+            'france': () => {
+                // Blue-White-Red vertical stripes
+                ctx.fillStyle = '#0055A4';
+                ctx.fillRect(x, y, width / 3, height);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(x + width / 3, y, width / 3, height);
+                ctx.fillStyle = '#EF4135';
+                ctx.fillRect(x + 2 * width / 3, y, width / 3, height);
+            },
+            'germany': () => {
+                // Black-Red-Gold horizontal stripes
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(x, y, width, height / 3);
+                ctx.fillStyle = '#DD0000';
+                ctx.fillRect(x, y + height / 3, width, height / 3);
+                ctx.fillStyle = '#FFCE00';
+                ctx.fillRect(x, y + 2 * height / 3, width, height / 3);
+            },
+            'italy': () => {
+                // Green-White-Red vertical stripes
+                ctx.fillStyle = '#009246';
+                ctx.fillRect(x, y, width / 3, height);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(x + width / 3, y, width / 3, height);
+                ctx.fillStyle = '#CE2B37';
+                ctx.fillRect(x + 2 * width / 3, y, width / 3, height);
+            },
+            'spain': () => {
+                // Red-Yellow-Red horizontal stripes
+                ctx.fillStyle = '#AA151B';
+                ctx.fillRect(x, y, width, height * 0.25);
+                ctx.fillStyle = '#F1BF00';
+                ctx.fillRect(x, y + height * 0.25, width, height * 0.5);
+                ctx.fillStyle = '#AA151B';
+                ctx.fillRect(x, y + height * 0.75, width, height * 0.25);
+            },
+            'japan': () => {
+                // White with red circle
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(x, y, width, height);
+                ctx.fillStyle = '#BC002D';
+                ctx.beginPath();
+                ctx.arc(x + width / 2, y + height / 2, Math.min(width, height) * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            'china': () => {
+                // Red with yellow stars
+                ctx.fillStyle = '#DE2910';
+                ctx.fillRect(x, y, width, height);
+                ctx.fillStyle = '#FFDE00';
+                ctx.beginPath();
+                ctx.arc(x + width * 0.3, y + height * 0.3, Math.min(width, height) * 0.15, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            'india': () => {
+                // Orange-White-Green horizontal stripes
+                ctx.fillStyle = '#FF9933';
+                ctx.fillRect(x, y, width, height / 3);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(x, y + height / 3, width, height / 3);
+                ctx.fillStyle = '#138808';
+                ctx.fillRect(x, y + 2 * height / 3, width, height / 3);
+            },
+            'australia': () => {
+                // Blue with Union Jack and stars
+                ctx.fillStyle = '#012169';
+                ctx.fillRect(x, y, width, height);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.arc(x + width * 0.7, y + height * 0.7, Math.min(width, height) * 0.1, 0, Math.PI * 2);
+                ctx.fill();
+            },
+            'russia': () => {
+                // White-Blue-Red horizontal stripes
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(x, y, width, height / 3);
+                ctx.fillStyle = '#0039A6';
+                ctx.fillRect(x, y + height / 3, width, height / 3);
+                ctx.fillStyle = '#D52B1E';
+                ctx.fillRect(x, y + 2 * height / 3, width, height / 3);
+            },
+            'south_korea': () => {
+                // White with red/blue circle
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(x, y, width, height);
+                ctx.fillStyle = '#CD2E3A';
+                ctx.beginPath();
+                ctx.arc(x + width / 2, y + height / 2, Math.min(width, height) * 0.25, 0, Math.PI);
+                ctx.fill();
+                ctx.fillStyle = '#0047A0';
+                ctx.beginPath();
+                ctx.arc(x + width / 2, y + height / 2, Math.min(width, height) * 0.25, Math.PI, Math.PI * 2);
+                ctx.fill();
+            }
         };
-        
+
+        if (flags[country]) {
+            flags[country]();
+        }
+        ctx.restore();
+    }
+
+    // Draw sport logo on addon
+    function drawSportLogo(ctx, x, y, size, sport) {
+        ctx.save();
+        const logos = {
+            'soccer': () => {
+                // Soccer ball pattern
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = size * 0.1;
+                ctx.stroke();
+                // Pentagon pattern
+                ctx.fillStyle = '#000000';
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i * Math.PI * 2 / 5) - Math.PI / 2;
+                    ctx.beginPath();
+                    ctx.arc(x + Math.cos(angle) * size * 0.5, y + Math.sin(angle) * size * 0.5, size * 0.15, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            },
+            'basketball': () => {
+                // Basketball with lines
+                ctx.fillStyle = '#FF6600';
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = size * 0.05;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x - size, y);
+                ctx.lineTo(x + size, y);
+                ctx.stroke();
+            },
+            'baseball': () => {
+                // Baseball with stitches
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#FF0000';
+                ctx.lineWidth = size * 0.08;
+                ctx.setLineDash([size * 0.1, size * 0.1]);
+                ctx.beginPath();
+                ctx.arc(x, y, size * 0.7, Math.PI * 0.3, Math.PI * 0.7);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(x, y, size * 0.7, Math.PI * 1.3, Math.PI * 1.7);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            },
+            'football': () => {
+                // American football
+                ctx.fillStyle = '#8B4513';
+                ctx.beginPath();
+                ctx.ellipse(x, y, size, size * 0.6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = size * 0.08;
+                ctx.beginPath();
+                ctx.moveTo(x - size * 0.5, y);
+                ctx.lineTo(x + size * 0.5, y);
+                ctx.stroke();
+            },
+            'hockey': () => {
+                // Hockey puck
+                ctx.fillStyle = '#000000';
+                ctx.beginPath();
+                ctx.ellipse(x, y, size, size * 0.3, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = size * 0.05;
+                ctx.stroke();
+            },
+            'tennis': () => {
+                // Tennis ball
+                ctx.fillStyle = '#CCFF00';
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = size * 0.1;
+                ctx.beginPath();
+                ctx.arc(x - size * 0.3, y, size * 0.8, -Math.PI * 0.3, Math.PI * 0.3);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(x + size * 0.3, y, size * 0.8, Math.PI * 0.7, Math.PI * 1.3);
+                ctx.stroke();
+            },
+            'golf': () => {
+                // Golf ball with dimples
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#CCCCCC';
+                for (let i = 0; i < 8; i++) {
+                    const angle = i * Math.PI / 4;
+                    ctx.beginPath();
+                    ctx.arc(x + Math.cos(angle) * size * 0.5, y + Math.sin(angle) * size * 0.5, size * 0.1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            },
+            'boxing': () => {
+                // Boxing glove shape
+                ctx.fillStyle = '#FF0000';
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#8B0000';
+                ctx.fillRect(x - size * 0.3, y + size * 0.5, size * 0.6, size * 0.5);
+            },
+            'racing': () => {
+                // Checkered flag pattern
+                const squares = 4;
+                const squareSize = size / squares;
+                for (let i = 0; i < squares; i++) {
+                    for (let j = 0; j < squares; j++) {
+                        ctx.fillStyle = (i + j) % 2 === 0 ? '#000000' : '#FFFFFF';
+                        ctx.fillRect(x - size + i * squareSize, y - size + j * squareSize, squareSize, squareSize);
+                    }
+                }
+            },
+            'cycling': () => {
+                // Bicycle wheel
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = size * 0.1;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.stroke();
+                for (let i = 0; i < 8; i++) {
+                    const angle = i * Math.PI / 4;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + Math.cos(angle) * size, y + Math.sin(angle) * size);
+                    ctx.stroke();
+                }
+            }
+        };
+
+        if (logos[sport]) {
+            logos[sport]();
+        }
+        ctx.restore();
+    }
+
+    // ADDONS SYSTEM - Cosmetic items (Hats, Shirts, Pants, Shoes)
+    const addons = {
+        // COUNTRY HATS (Common)
+        'hat_usa': { name: 'USA Cap', type: 'hat', rarity: 'common', color: '#B22234', pattern: 'stars', emoji: '🧢', icon: '🇺🇸' },
+        'hat_canada': { name: 'Canada Toque', type: 'hat', rarity: 'common', color: '#FF0000', pattern: 'maple', emoji: '🎩', icon: '🇨🇦' },
+        'hat_mexico': { name: 'Sombrero', type: 'hat', rarity: 'common', color: '#006847', pattern: 'stripes', emoji: '🤠', icon: '🇲🇽' },
+        'hat_brazil': { name: 'Brazil Cap', type: 'hat', rarity: 'common', color: '#009C3B', pattern: 'stars', emoji: '🧢', icon: '🇧🇷' },
+        'hat_uk': { name: 'British Bowler', type: 'hat', rarity: 'common', color: '#012169', pattern: 'union', emoji: '🎩', icon: '🇬🇧' },
+        'hat_france': { name: 'French Beret', type: 'hat', rarity: 'common', color: '#0055A4', pattern: 'tricolor', emoji: '🎨', icon: '🇫🇷' },
+        'hat_germany': { name: 'German Cap', type: 'hat', rarity: 'common', color: '#000000', pattern: 'tricolor', emoji: '🧢', icon: '🇩🇪' },
+        'hat_italy': { name: 'Italian Cap', type: 'hat', rarity: 'common', color: '#009246', pattern: 'tricolor', emoji: '🧢', icon: '🇮🇹' },
+        'hat_spain': { name: 'Spanish Hat', type: 'hat', rarity: 'common', color: '#AA151B', pattern: 'stripes', emoji: '🎩', icon: '🇪🇸' },
+        'hat_japan': { name: 'Rising Sun Bandana', type: 'hat', rarity: 'common', color: '#BC002D', pattern: 'circle', emoji: '🥋', icon: '🇯🇵' },
+        'hat_china': { name: 'Chinese Hat', type: 'hat', rarity: 'common', color: '#DE2910', pattern: 'stars', emoji: '🎩', icon: '🇨🇳' },
+        'hat_india': { name: 'Indian Turban', type: 'hat', rarity: 'common', color: '#FF9933', pattern: 'tricolor', emoji: '👳', icon: '🇮🇳' },
+        'hat_australia': { name: 'Aussie Hat', type: 'hat', rarity: 'common', color: '#012169', pattern: 'stars', emoji: '🤠', icon: '🇦🇺' },
+        'hat_russia': { name: 'Ushanka', type: 'hat', rarity: 'common', color: '#FFFFFF', pattern: 'tricolor', emoji: '🧣', icon: '🇷🇺' },
+        'hat_south_korea': { name: 'Korean Cap', type: 'hat', rarity: 'common', color: '#003478', pattern: 'taeguk', emoji: '🧢', icon: '🇰🇷' },
+
+        // COUNTRY SHIRTS (Rare)
+        'shirt_usa': { name: 'USA Jersey', type: 'shirt', rarity: 'rare', color: '#B22234', pattern: 'stars_stripes', emoji: '👕', icon: '🇺🇸' },
+        'shirt_canada': { name: 'Canada Jersey', type: 'shirt', rarity: 'rare', color: '#FF0000', pattern: 'maple_leaf', emoji: '👕', icon: '🇨🇦' },
+        'shirt_mexico': { name: 'Mexico Jersey', type: 'shirt', rarity: 'rare', color: '#006847', pattern: 'eagle', emoji: '👕', icon: '🇲🇽' },
+        'shirt_brazil': { name: 'Brazil Jersey', type: 'shirt', rarity: 'rare', color: '#009C3B', pattern: 'yellow_green', emoji: '👕', icon: '🇧🇷' },
+        'shirt_uk': { name: 'UK Jersey', type: 'shirt', rarity: 'rare', color: '#012169', pattern: 'union_jack', emoji: '👕', icon: '🇬🇧' },
+        'shirt_france': { name: 'France Jersey', type: 'shirt', rarity: 'rare', color: '#0055A4', pattern: 'tricolor_v', emoji: '👕', icon: '🇫🇷' },
+        'shirt_germany': { name: 'Germany Jersey', type: 'shirt', rarity: 'rare', color: '#000000', pattern: 'tricolor_h', emoji: '👕', icon: '🇩🇪' },
+        'shirt_italy': { name: 'Italy Jersey', type: 'shirt', rarity: 'rare', color: '#009246', pattern: 'azzurri', emoji: '👕', icon: '🇮🇹' },
+        'shirt_spain': { name: 'Spain Jersey', type: 'shirt', rarity: 'rare', color: '#AA151B', pattern: 'red_yellow', emoji: '👕', icon: '🇪🇸' },
+        'shirt_japan': { name: 'Japan Jersey', type: 'shirt', rarity: 'rare', color: '#FFFFFF', pattern: 'red_circle', emoji: '👕', icon: '🇯🇵' },
+        'shirt_china': { name: 'China Jersey', type: 'shirt', rarity: 'rare', color: '#DE2910', pattern: 'red_stars', emoji: '👕', icon: '🇨🇳' },
+        'shirt_india': { name: 'India Jersey', type: 'shirt', rarity: 'rare', color: '#FF9933', pattern: 'tricolor_chakra', emoji: '👕', icon: '🇮🇳' },
+        'shirt_australia': { name: 'Australia Jersey', type: 'shirt', rarity: 'rare', color: '#FFCD00', pattern: 'green_gold', emoji: '👕', icon: '🇦🇺' },
+        'shirt_russia': { name: 'Russia Jersey', type: 'shirt', rarity: 'rare', color: '#FFFFFF', pattern: 'tricolor_bear', emoji: '👕', icon: '🇷🇺' },
+        'shirt_south_korea': { name: 'Korea Jersey', type: 'shirt', rarity: 'rare', color: '#003478', pattern: 'taeguk_red', emoji: '👕', icon: '🇰🇷' },
+
+        // COUNTRY PANTS (Rare)
+        'pants_usa': { name: 'USA Pants', type: 'pants', rarity: 'rare', color: '#002868', pattern: 'stars', emoji: '👖', icon: '🇺🇸' },
+        'pants_canada': { name: 'Canada Pants', type: 'pants', rarity: 'rare', color: '#FF0000', pattern: 'solid', emoji: '👖', icon: '🇨🇦' },
+        'pants_mexico': { name: 'Mexico Pants', type: 'pants', rarity: 'rare', color: '#CE1126', pattern: 'solid', emoji: '👖', icon: '🇲🇽' },
+        'pants_brazil': { name: 'Brazil Pants', type: 'pants', rarity: 'rare', color: '#002776', pattern: 'solid', emoji: '👖', icon: '🇧🇷' },
+        'pants_uk': { name: 'UK Pants', type: 'pants', rarity: 'rare', color: '#012169', pattern: 'solid', emoji: '👖', icon: '🇬🇧' },
+        'pants_france': { name: 'France Pants', type: 'pants', rarity: 'rare', color: '#0055A4', pattern: 'solid', emoji: '👖', icon: '🇫🇷' },
+        'pants_germany': { name: 'Germany Pants', type: 'pants', rarity: 'rare', color: '#000000', pattern: 'solid', emoji: '👖', icon: '🇩🇪' },
+        'pants_italy': { name: 'Italy Pants', type: 'pants', rarity: 'rare', color: '#009246', pattern: 'solid', emoji: '👖', icon: '🇮🇹' },
+        'pants_spain': { name: 'Spain Pants', type: 'pants', rarity: 'rare', color: '#AA151B', pattern: 'solid', emoji: '👖', icon: '🇪🇸' },
+        'pants_japan': { name: 'Japan Pants', type: 'pants', rarity: 'rare', color: '#000080', pattern: 'solid', emoji: '👖', icon: '🇯🇵' },
+        'pants_china': { name: 'China Pants', type: 'pants', rarity: 'rare', color: '#DE2910', pattern: 'solid', emoji: '👖', icon: '🇨🇳' },
+        'pants_india': { name: 'India Pants', type: 'pants', rarity: 'rare', color: '#138808', pattern: 'solid', emoji: '👖', icon: '🇮🇳' },
+        'pants_australia': { name: 'Australia Pants', type: 'pants', rarity: 'rare', color: '#008751', pattern: 'solid', emoji: '👖', icon: '🇦🇺' },
+        'pants_russia': { name: 'Russia Pants', type: 'pants', rarity: 'rare', color: '#0039A6', pattern: 'solid', emoji: '👖', icon: '🇷🇺' },
+        'pants_south_korea': { name: 'Korea Pants', type: 'pants', rarity: 'rare', color: '#003478', pattern: 'solid', emoji: '👖', icon: '🇰🇷' },
+
+        // COUNTRY SHOES (Common)
+        'shoes_usa': { name: 'USA Sneakers', type: 'shoes', rarity: 'common', color: '#B22234', pattern: 'stripes', emoji: '👟', icon: '🇺🇸' },
+        'shoes_canada': { name: 'Canada Boots', type: 'shoes', rarity: 'common', color: '#FF0000', pattern: 'solid', emoji: '🥾', icon: '🇨🇦' },
+        'shoes_mexico': { name: 'Mexico Shoes', type: 'shoes', rarity: 'common', color: '#006847', pattern: 'solid', emoji: '👞', icon: '🇲🇽' },
+        'shoes_brazil': { name: 'Brazil Cleats', type: 'shoes', rarity: 'common', color: '#FFDF00', pattern: 'solid', emoji: '⚽', icon: '🇧🇷' },
+        'shoes_uk': { name: 'UK Boots', type: 'shoes', rarity: 'common', color: '#012169', pattern: 'solid', emoji: '🥾', icon: '🇬🇧' },
+        'shoes_france': { name: 'France Shoes', type: 'shoes', rarity: 'common', color: '#0055A4', pattern: 'solid', emoji: '👞', icon: '🇫🇷' },
+        'shoes_germany': { name: 'Germany Boots', type: 'shoes', rarity: 'common', color: '#000000', pattern: 'solid', emoji: '🥾', icon: '🇩🇪' },
+        'shoes_italy': { name: 'Italy Shoes', type: 'shoes', rarity: 'common', color: '#009246', pattern: 'solid', emoji: '👞', icon: '🇮🇹' },
+        'shoes_spain': { name: 'Spain Shoes', type: 'shoes', rarity: 'common', color: '#AA151B', pattern: 'solid', emoji: '👞', icon: '🇪🇸' },
+        'shoes_japan': { name: 'Japan Shoes', type: 'shoes', rarity: 'common', color: '#BC002D', pattern: 'solid', emoji: '👞', icon: '🇯🇵' },
+        'shoes_china': { name: 'China Shoes', type: 'shoes', rarity: 'common', color: '#DE2910', pattern: 'solid', emoji: '👞', icon: '🇨🇳' },
+        'shoes_india': { name: 'India Sandals', type: 'shoes', rarity: 'common', color: '#FF9933', pattern: 'solid', emoji: '🩴', icon: '🇮🇳' },
+        'shoes_australia': { name: 'Australia Boots', type: 'shoes', rarity: 'common', color: '#FFCD00', pattern: 'solid', emoji: '🥾', icon: '🇦🇺' },
+        'shoes_russia': { name: 'Russia Boots', type: 'shoes', rarity: 'common', color: '#FFFFFF', pattern: 'solid', emoji: '🥾', icon: '🇷🇺' },
+        'shoes_south_korea': { name: 'Korea Shoes', type: 'shoes', rarity: 'common', color: '#003478', pattern: 'solid', emoji: '👞', icon: '🇰🇷' },
+
+        // SPORT HATS (Epic)
+        'hat_soccer': { name: 'Soccer Headband', type: 'hat', rarity: 'epic', color: '#000000', pattern: 'sweat', emoji: '🎽', icon: '⚽' },
+        'hat_basketball': { name: 'Basketball Cap', type: 'hat', rarity: 'epic', color: '#FF6600', pattern: 'ball', emoji: '🧢', icon: '🏀' },
+        'hat_baseball': { name: 'Baseball Cap', type: 'hat', rarity: 'epic', color: '#003087', pattern: 'team', emoji: '🧢', icon: '⚾' },
+        'hat_football': { name: 'Football Helmet', type: 'hat', rarity: 'epic', color: '#002244', pattern: 'helmet', emoji: '🪖', icon: '🏈' },
+        'hat_hockey': { name: 'Hockey Helmet', type: 'hat', rarity: 'epic', color: '#000000', pattern: 'cage', emoji: '🪖', icon: '🏒' },
+        'hat_tennis': { name: 'Tennis Visor', type: 'hat', rarity: 'epic', color: '#FFFFFF', pattern: 'visor', emoji: '🎩', icon: '🎾' },
+        'hat_golf': { name: 'Golf Cap', type: 'hat', rarity: 'epic', color: '#228B22', pattern: 'classic', emoji: '🧢', icon: '⛳' },
+        'hat_boxing': { name: 'Boxing Headgear', type: 'hat', rarity: 'epic', color: '#FF0000', pattern: 'protective', emoji: '🪖', icon: '🥊' },
+        'hat_racing': { name: 'Racing Helmet', type: 'hat', rarity: 'epic', color: '#FF0000', pattern: 'speed', emoji: '🪖', icon: '🏎️' },
+        'hat_cycling': { name: 'Cycling Helmet', type: 'hat', rarity: 'epic', color: '#FFFF00', pattern: 'aero', emoji: '🪖', icon: '🚴' },
+
+        // SPORT SHIRTS (Legendary)
+        'shirt_soccer': { name: 'Soccer Jersey #10', type: 'shirt', rarity: 'legendary', color: '#FFFFFF', pattern: 'number_10', emoji: '👕', icon: '⚽' },
+        'shirt_basketball': { name: 'Basketball Jersey #23', type: 'shirt', rarity: 'legendary', color: '#FF6600', pattern: 'number_23', emoji: '🎽', icon: '🏀' },
+        'shirt_baseball': { name: 'Baseball Jersey', type: 'shirt', rarity: 'legendary', color: '#FFFFFF', pattern: 'pinstripes', emoji: '👕', icon: '⚾' },
+        'shirt_football': { name: 'Football Jersey #12', type: 'shirt', rarity: 'legendary', color: '#002244', pattern: 'number_12', emoji: '👕', icon: '🏈' },
+        'shirt_hockey': { name: 'Hockey Jersey #99', type: 'shirt', rarity: 'legendary', color: '#000000', pattern: 'number_99', emoji: '👕', icon: '🏒' },
+        'shirt_tennis': { name: 'Tennis Polo', type: 'shirt', rarity: 'legendary', color: '#FFFFFF', pattern: 'collar', emoji: '👕', icon: '🎾' },
+        'shirt_golf': { name: 'Golf Polo', type: 'shirt', rarity: 'legendary', color: '#228B22', pattern: 'classic_polo', emoji: '👕', icon: '⛳' },
+        'shirt_boxing': { name: 'Boxing Tank', type: 'shirt', rarity: 'legendary', color: '#FF0000', pattern: 'champion', emoji: '🎽', icon: '🥊' },
+        'shirt_racing': { name: 'Racing Suit', type: 'shirt', rarity: 'legendary', color: '#FF0000', pattern: 'sponsor', emoji: '🦺', icon: '🏎️' },
+        'shirt_cycling': { name: 'Cycling Jersey', type: 'shirt', rarity: 'legendary', color: '#FFFF00', pattern: 'leader', emoji: '👕', icon: '🚴' },
+
+        // SPORT PANTS (Epic)
+        'pants_soccer': { name: 'Soccer Shorts', type: 'pants', rarity: 'epic', color: '#000000', pattern: 'athletic', emoji: '🩳', icon: '⚽' },
+        'pants_basketball': { name: 'Basketball Shorts', type: 'pants', rarity: 'epic', color: '#FF6600', pattern: 'baggy', emoji: '🩳', icon: '🏀' },
+        'pants_baseball': { name: 'Baseball Pants', type: 'pants', rarity: 'epic', color: '#FFFFFF', pattern: 'pinstripe', emoji: '👖', icon: '⚾' },
+        'pants_football': { name: 'Football Pants', type: 'pants', rarity: 'epic', color: '#002244', pattern: 'padded', emoji: '👖', icon: '🏈' },
+        'pants_hockey': { name: 'Hockey Pants', type: 'pants', rarity: 'epic', color: '#000000', pattern: 'padded', emoji: '👖', icon: '🏒' },
+        'pants_tennis': { name: 'Tennis Shorts', type: 'pants', rarity: 'epic', color: '#FFFFFF', pattern: 'athletic', emoji: '🩳', icon: '🎾' },
+        'pants_golf': { name: 'Golf Pants', type: 'pants', rarity: 'epic', color: '#8B4513', pattern: 'khaki', emoji: '👖', icon: '⛳' },
+        'pants_boxing': { name: 'Boxing Shorts', type: 'pants', rarity: 'epic', color: '#FF0000', pattern: 'satin', emoji: '🩳', icon: '🥊' },
+        'pants_racing': { name: 'Racing Pants', type: 'pants', rarity: 'epic', color: '#FF0000', pattern: 'fireproof', emoji: '👖', icon: '🏎️' },
+        'pants_cycling': { name: 'Cycling Shorts', type: 'pants', rarity: 'epic', color: '#000000', pattern: 'padded', emoji: '🩳', icon: '🚴' },
+
+        // SPORT SHOES (Epic)
+        'shoes_soccer': { name: 'Soccer Cleats', type: 'shoes', rarity: 'epic', color: '#000000', pattern: 'cleats', emoji: '👟', icon: '⚽' },
+        'shoes_basketball': { name: 'Basketball Shoes', type: 'shoes', rarity: 'epic', color: '#FF6600', pattern: 'high_top', emoji: '👟', icon: '🏀' },
+        'shoes_baseball': { name: 'Baseball Cleats', type: 'shoes', rarity: 'epic', color: '#FFFFFF', pattern: 'metal_cleats', emoji: '👟', icon: '⚾' },
+        'shoes_football': { name: 'Football Cleats', type: 'shoes', rarity: 'epic', color: '#002244', pattern: 'cleats', emoji: '👟', icon: '🏈' },
+        'shoes_hockey': { name: 'Hockey Skates', type: 'shoes', rarity: 'epic', color: '#000000', pattern: 'blades', emoji: '⛸️', icon: '🏒' },
+        'shoes_tennis': { name: 'Tennis Shoes', type: 'shoes', rarity: 'epic', color: '#FFFFFF', pattern: 'court', emoji: '👟', icon: '🎾' },
+        'shoes_golf': { name: 'Golf Shoes', type: 'shoes', rarity: 'epic', color: '#FFFFFF', pattern: 'spikes', emoji: '👞', icon: '⛳' },
+        'shoes_boxing': { name: 'Boxing Boots', type: 'shoes', rarity: 'epic', color: '#FF0000', pattern: 'high_ankle', emoji: '🥾', icon: '🥊' },
+        'shoes_racing': { name: 'Racing Boots', type: 'shoes', rarity: 'epic', color: '#FF0000', pattern: 'fireproof', emoji: '🥾', icon: '🏎️' },
+        'shoes_cycling': { name: 'Cycling Shoes', type: 'shoes', rarity: 'epic', color: '#000000', pattern: 'clip_in', emoji: '👟', icon: '🚴' }
+    };
+
+    // Enhanced Unified Chest System - Can give Characters OR Badges!
+    function buyChest(chestType = 'common') {
+        const chestPrices = {
+            common: 100,
+            rare: 200,
+            epic: 350,
+            legendary: 600,
+            mega: 750,  // 3 items!
+            guaranteed: 1200,  // Guaranteed legendary
+            choose: 1500  // Choose any item
+        };
+
         const chestRarities = {
-            common: { common: 0.70, rare: 0.25, epic: 0.04, legendary: 0.01 },  // REDUCED legendary from 0.05 to 0.01
-            rare: { common: 0.45, rare: 0.35, epic: 0.17, legendary: 0.03 },  // REDUCED legendary from 0.07 to 0.03
+            common: { common: 0.70, rare: 0.25, epic: 0.04, legendary: 0.01 },
+            rare: { common: 0.45, rare: 0.35, epic: 0.17, legendary: 0.03 },
             epic: { common: 0.35, rare: 0.35, epic: 0.20, legendary: 0.10 },
-            legendary: { common: 0.40, rare: 0.20, epic: 0.10, legendary: 0.30 },
-            mega: { common: 0.45, rare: 0.35, epic: 0.17, legendary: 0.03 },  // UPDATED: Same as rare chest now!
-            guaranteed: { common: 0.00, rare: 0.00, epic: 0.00, legendary: 1.00 },  // 100% LEGENDARY!
-            // BADGE CHEST RARITIES
-            'common_badge': { common: 0.80, rare: 0.15, epic: 0.04, legendary: 0.01 },
-            'rare_badge': { common: 0.50, rare: 0.35, epic: 0.13, legendary: 0.02 },
-            'mega_badge': { common: 0.40, rare: 0.35, epic: 0.20, legendary: 0.05 },
-            'guaranteed_legendary_badge': { common: 0.00, rare: 0.00, epic: 0.00, legendary: 1.00 }
+            legendary: { common: 0.30, rare: 0.25, epic: 0.20, legendary: 0.25 },
+            mega: { common: 0.45, rare: 0.35, epic: 0.17, legendary: 0.03 },
+            guaranteed: { common: 0.00, rare: 0.00, epic: 0.00, legendary: 1.00 }
         };
         
         const price = chestPrices[chestType];
-        
-        let playerCoins, playerCharacters;
+
+        let playerCoins, playerCharacters, playerBadges;
         if (gameState.gameMode === 'multiplayer') {
             if (gameState.currentShopPlayer === 1) {
                 playerCoins = gameState.player1Coins;
                 playerCharacters = gameState.player1Characters;
+                playerBadges = gameState.player1Badges || [];
             } else {
                 playerCoins = gameState.player2Coins;
                 playerCharacters = gameState.player2Characters;
+                playerBadges = gameState.player2Badges || [];
             }
         } else {
             playerCoins = gameState.coins;
             playerCharacters = gameState.unlockedCharacters;
+            playerBadges = gameState.unlockedBadges || [];
         }
-        
+
         if (playerCoins < price) {
             showNotification('Not enough coins!');
             return;
         }
-        
+
         // Deduct coins
         if (gameState.gameMode === 'multiplayer') {
             if (gameState.currentShopPlayer === 1) {
@@ -7564,83 +9050,142 @@
             gameState.coins = safeCoins(gameState.coins - price);
             updateSinglePlayerCoinsDisplay();
         }
-        
-        // Get available characters
-        const lockedChars = Object.keys(characters).filter(char => 
-            !playerCharacters.includes(char)
-        );
-        
-        if (lockedChars.length === 0) {
-            showNotification('You already have all characters!');
-            return;
-        }
-        
-        // Special handling for CHOOSE YOUR CHARACTER chest
-        if (chestType === 'choose') {
-            // Store the locked characters and show selection screen
-            gameState.chooseChestAvailableChars = lockedChars;
-            showChooseCharacterScreen();
-            return;
-        }
-        
-        // Special handling for MEGA CHEST - 3 characters!
-        const numCharacters = chestType === 'mega' ? 3 : 1;
-        const newCharacters = [];
-        
-        for (let i = 0; i < numCharacters && lockedChars.length > 0; i++) {
-            const newChar = selectCharacterByChestRarity(lockedChars, chestRarities[chestType]);
-            newCharacters.push(newChar);
-            
-            // Add to collection
-            if (gameState.gameMode === 'multiplayer') {
-                if (gameState.currentShopPlayer === 1) {
-                    gameState.player1Characters.push(newChar);
-                } else {
-                    gameState.player2Characters.push(newChar);
-                }
-            } else {
-                gameState.unlockedCharacters.push(newChar);
-            }
-            
-            // Remove from locked chars for next iteration
-            const index = lockedChars.indexOf(newChar);
-            if (index > -1) {
-                lockedChars.splice(index, 1);
-            }
-        }
-        
+
         // Track challenge progress for chest opening
         trackChallengeProgress('chest_opened');
         trackChallengeProgress('coins_spent', { amount: price });
 
-        // Debug logging to track the issue
-        console.log('Characters selected for chest:', newCharacters);
-        newCharacters.forEach((charKey, index) => {
-            console.log(`Character ${index + 1}: Key="${charKey}", Name="${characters[charKey].name}"`);
-        });
+        // Special handling for CHOOSE chest
+        if (chestType === 'choose') {
+            // Get available characters and badges
+            const lockedChars = Object.keys(characters).filter(char => !playerCharacters.includes(char));
+            const lockedBadges = Object.keys(badges).filter(badge => !playerBadges.includes(badge));
 
-        // Show chest opening animation - always pass the actual characters that were unlocked
-        showChestAnimation(newCharacters, chestType);
+            gameState.chooseChestAvailableChars = lockedChars;
+            gameState.chooseChestAvailableBadges = lockedBadges;
+            showChooseItemScreen();
+            return;
+        }
+
+        // Determine number of items (MEGA gives 3)
+        const numItems = chestType === 'mega' ? 3 : 1;
+        const newItems = [];
+
+        for (let i = 0; i < numItems; i++) {
+            // 30% chance for character, 70% chance for badge
+            const isCharacter = Math.random() < 0.3;
+
+            if (isCharacter) {
+                // Get available characters
+                const lockedChars = Object.keys(characters).filter(char => !playerCharacters.includes(char));
+
+                if (lockedChars.length > 0) {
+                    const newChar = selectItemByChestRarity(lockedChars, chestRarities[chestType], 'character');
+                    newItems.push({ type: 'character', id: newChar });
+
+                    // Add to collection
+                    if (gameState.gameMode === 'multiplayer') {
+                        if (gameState.currentShopPlayer === 1) {
+                            gameState.player1Characters.push(newChar);
+                        } else {
+                            gameState.player2Characters.push(newChar);
+                        }
+                    } else {
+                        gameState.unlockedCharacters.push(newChar);
+                    }
+                } else {
+                    // No characters available, give badge instead
+                    const lockedBadges = Object.keys(badges).filter(badge => !playerBadges.includes(badge));
+                    if (lockedBadges.length > 0) {
+                        const newBadge = selectItemByChestRarity(lockedBadges, chestRarities[chestType], 'badge');
+                        newItems.push({ type: 'badge', id: newBadge });
+
+                        // Add to collection
+                        if (gameState.gameMode === 'multiplayer') {
+                            if (gameState.currentShopPlayer === 1) {
+                                if (!gameState.player1Badges) gameState.player1Badges = [];
+                                gameState.player1Badges.push(newBadge);
+                            } else {
+                                if (!gameState.player2Badges) gameState.player2Badges = [];
+                                gameState.player2Badges.push(newBadge);
+                            }
+                        } else {
+                            if (!gameState.unlockedBadges) gameState.unlockedBadges = [];
+                            gameState.unlockedBadges.push(newBadge);
+                        }
+
+                        // Track badge collection
+                        trackChallengeProgress('badge_collected', { rarity: badges[newBadge].rarity });
+                    }
+                }
+            } else {
+                // Give badge
+                const lockedBadges = Object.keys(badges).filter(badge => !playerBadges.includes(badge));
+
+                if (lockedBadges.length > 0) {
+                    const newBadge = selectItemByChestRarity(lockedBadges, chestRarities[chestType], 'badge');
+                    newItems.push({ type: 'badge', id: newBadge });
+
+                    // Add to collection
+                    if (gameState.gameMode === 'multiplayer') {
+                        if (gameState.currentShopPlayer === 1) {
+                            if (!gameState.player1Badges) gameState.player1Badges = [];
+                            gameState.player1Badges.push(newBadge);
+                        } else {
+                            if (!gameState.player2Badges) gameState.player2Badges = [];
+                            gameState.player2Badges.push(newBadge);
+                        }
+                    } else {
+                        if (!gameState.unlockedBadges) gameState.unlockedBadges = [];
+                        gameState.unlockedBadges.push(newBadge);
+                    }
+
+                    // Track badge collection
+                    trackChallengeProgress('badge_collected', { rarity: badges[newBadge].rarity });
+                } else {
+                    // No badges available, give character instead
+                    const lockedChars = Object.keys(characters).filter(char => !playerCharacters.includes(char));
+                    if (lockedChars.length > 0) {
+                        const newChar = selectItemByChestRarity(lockedChars, chestRarities[chestType], 'character');
+                        newItems.push({ type: 'character', id: newChar });
+
+                        // Add to collection
+                        if (gameState.gameMode === 'multiplayer') {
+                            if (gameState.currentShopPlayer === 1) {
+                                gameState.player1Characters.push(newChar);
+                            } else {
+                                gameState.player2Characters.push(newChar);
+                            }
+                        } else {
+                            gameState.unlockedCharacters.push(newChar);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Show unified chest opening animation
+        showUnifiedChestAnimation(newItems, chestType);
     }
 
-    function selectCharacterByChestRarity(availableChars, rarityChances) {
-        // Group characters by rarity
+    function selectItemByChestRarity(availableItems, rarityChances, itemType) {
+        // Group items by rarity
         const rarityGroups = {
             common: [],
             rare: [],
             epic: [],
             legendary: []
         };
-        
-        availableChars.forEach(charKey => {
-            const rarity = characters[charKey].rarity;
-            rarityGroups[rarity].push(charKey);
+
+        availableItems.forEach(itemKey => {
+            const rarity = itemType === 'character' ? characters[itemKey].rarity : badges[itemKey].rarity;
+            rarityGroups[rarity].push(itemKey);
         });
-        
+
         // Roll for rarity based on chest type
         const roll = Math.random();
         let selectedRarity;
-        
+
         if (roll < rarityChances.legendary && rarityGroups.legendary.length > 0) {
             selectedRarity = 'legendary';
         } else if (roll < rarityChances.legendary + rarityChances.epic && rarityGroups.epic.length > 0) {
@@ -7650,8 +9195,8 @@
         } else {
             selectedRarity = 'common';
         }
-        
-        // If selected rarity has no available characters, fall back to available ones
+
+        // If selected rarity has no available items, fall back to available ones
         const selectedGroup = rarityGroups[selectedRarity];
         if (selectedGroup.length === 0) {
             // Find first available rarity group
@@ -7661,7 +9206,133 @@
                 }
             }
         }
-        
+
+        return selectedGroup[Math.floor(Math.random() * selectedGroup.length)];
+    }
+
+    // ADDON CHEST SYSTEM - Buy cosmetic items!
+    function buyAddonChest(chestType = 'common') {
+        const chestPrices = {
+            common: 150,
+            rare: 300,
+            epic: 500,
+            legendary: 800
+        };
+
+        const chestRarities = {
+            common: { common: 0.70, rare: 0.25, epic: 0.04, legendary: 0.01 },
+            rare: { common: 0.45, rare: 0.35, epic: 0.17, legendary: 0.03 },
+            epic: { common: 0.35, rare: 0.35, epic: 0.20, legendary: 0.10 },
+            legendary: { common: 0.30, rare: 0.25, epic: 0.20, legendary: 0.25 }
+        };
+
+        const price = chestPrices[chestType];
+        let currentCoins, playerAddons;
+
+        if (gameState.gameMode === 'multiplayer') {
+            currentCoins = gameState.currentShopPlayer === 1 ? gameState.player1Coins : gameState.player2Coins;
+            playerAddons = gameState.currentShopPlayer === 1 ? gameState.player1Addons : gameState.player2Addons;
+        } else {
+            currentCoins = gameState.coins;
+            playerAddons = gameState.unlockedAddons;
+        }
+
+        if (currentCoins < price) {
+            showNotification(`Not enough coins! Need ${price} coins.`);
+            return;
+        }
+
+        // Deduct coins
+        if (gameState.gameMode === 'multiplayer') {
+            if (gameState.currentShopPlayer === 1) {
+                gameState.player1Coins = safeCoins(gameState.player1Coins - price);
+            } else {
+                gameState.player2Coins = safeCoins(gameState.player2Coins - price);
+            }
+            updateMultiplayerCoinsDisplay();
+        } else {
+            gameState.coins = safeCoins(gameState.coins - price);
+            updateSinglePlayerCoinsDisplay();
+        }
+
+        // Get available addons
+        const lockedAddons = Object.keys(addons).filter(addon => !playerAddons.includes(addon));
+
+        if (lockedAddons.length === 0) {
+            showNotification('You have all addons!');
+            return;
+        }
+
+        // Select addon by rarity
+        const newAddon = selectItemByChestRarity(lockedAddons, chestRarities[chestType], 'addon');
+
+        // Add to collection
+        if (gameState.gameMode === 'multiplayer') {
+            if (gameState.currentShopPlayer === 1) {
+                if (!gameState.player1Addons) gameState.player1Addons = [];
+                gameState.player1Addons.push(newAddon);
+            } else {
+                if (!gameState.player2Addons) gameState.player2Addons = [];
+                gameState.player2Addons.push(newAddon);
+            }
+        } else {
+            if (!gameState.unlockedAddons) gameState.unlockedAddons = [];
+            gameState.unlockedAddons.push(newAddon);
+        }
+
+        // Show addon animation
+        showAddonChestAnimation(newAddon, chestType);
+
+        // Save game state
+        saveGameState();
+    }
+
+    function selectItemByChestRarity(availableItems, rarityChances, itemType) {
+        // Group items by rarity
+        const rarityGroups = {
+            common: [],
+            rare: [],
+            epic: [],
+            legendary: []
+        };
+
+        availableItems.forEach(itemKey => {
+            let rarity;
+            if (itemType === 'character') {
+                rarity = characters[itemKey].rarity;
+            } else if (itemType === 'badge') {
+                rarity = badges[itemKey].rarity;
+            } else if (itemType === 'addon') {
+                rarity = addons[itemKey].rarity;
+            }
+            rarityGroups[rarity].push(itemKey);
+        });
+
+        // Roll for rarity based on chest type
+        const roll = Math.random();
+        let selectedRarity;
+
+        if (roll < rarityChances.legendary && rarityGroups.legendary.length > 0) {
+            selectedRarity = 'legendary';
+        } else if (roll < rarityChances.legendary + rarityChances.epic && rarityGroups.epic.length > 0) {
+            selectedRarity = 'epic';
+        } else if (roll < rarityChances.legendary + rarityChances.epic + rarityChances.rare && rarityGroups.rare.length > 0) {
+            selectedRarity = 'rare';
+        } else {
+            selectedRarity = 'common';
+        }
+
+        // If selected rarity has no available items, fall back to available ones
+        const selectedGroup = rarityGroups[selectedRarity];
+        if (selectedGroup.length === 0) {
+            // Find first available rarity group
+            for (const rarity of ['common', 'rare', 'epic', 'legendary']) {
+                if (rarityGroups[rarity].length > 0) {
+                    return rarityGroups[rarity][Math.floor(Math.random() * rarityGroups[rarity].length)];
+                }
+            }
+        }
+
         return selectedGroup[Math.floor(Math.random() * selectedGroup.length)];
     }
 
@@ -7701,7 +9372,13 @@
                     <div style="font-size: 11px; color: #888;">Reload: ${(char.reloadTime/60).toFixed(1)}s</div>
                 ` : ''}
             `;
-            
+
+            // Make unlocked cards clickable to show detail screen
+            if (isUnlocked) {
+                card.style.cursor = 'pointer';
+                card.onclick = () => showCharacterDetail(charKey);
+            }
+
             grid.appendChild(card);
         });
     }
@@ -8971,6 +10648,272 @@
         }
     }
 
+    // Unified Chest Animation for Characters AND Badges - Sequential Stat Reveal!
+    let currentUnifiedChestAnimation = null;
+
+    function showUnifiedChestAnimation(items, chestType) {
+        const chestOpening = document.getElementById('chestOpening');
+        const characterReveal = document.getElementById('characterReveal');
+        const rarityGlow = document.getElementById('rarityGlow');
+        const rarityText = document.getElementById('rarityText');
+        const particles = document.getElementById('particles');
+
+        // Reset all classes and content
+        characterReveal.className = 'character-reveal emoji';
+        rarityGlow.className = 'rarity-glow';
+        rarityText.textContent = '';
+        characterReveal.textContent = '';
+        particles.innerHTML = '';
+
+        // Remove any existing stat reveal elements
+        const existingStats = chestOpening.querySelectorAll('.stat-reveal');
+        existingStats.forEach(stat => stat.remove());
+
+        // Set chest colors based on chest type
+        const chestElement = chestOpening.querySelector('.chest-animation');
+        const chestLid = chestOpening.querySelector('.chest-lid');
+
+        if (chestElement && chestLid) {
+            let bodyColor, lidColor, glowColor;
+
+            switch(chestType) {
+                case 'common':
+                    bodyColor = '#7d7d7d';
+                    lidColor = '#bdbdbd';
+                    glowColor = '#9e9e9e';
+                    break;
+                case 'rare':
+                    bodyColor = '#1976d2';
+                    lidColor = '#42a5f5';
+                    glowColor = '#2196f3';
+                    break;
+                case 'epic':
+                    bodyColor = '#7b1fa2';
+                    lidColor = '#ba68c8';
+                    glowColor = '#9c27b0';
+                    break;
+                case 'legendary':
+                    bodyColor = '#e65100';
+                    lidColor = '#ffb74d';
+                    glowColor = '#ff9800';
+                    break;
+                case 'mega':
+                    bodyColor = '#FF6B35';
+                    lidColor = '#FFD700';
+                    glowColor = '#FFA500';
+                    break;
+                case 'guaranteed':
+                    bodyColor = '#FF6B35';
+                    lidColor = '#FFD700';
+                    glowColor = '#FF9800';
+                    break;
+                case 'choose':
+                    bodyColor = '#7b1fa2';
+                    lidColor = '#E91E63';
+                    glowColor = '#9C27B0';
+                    break;
+                default:
+                    bodyColor = '#7d7d7d';
+                    lidColor = '#bdbdbd';
+                    glowColor = '#9e9e9e';
+            }
+
+            chestElement.style.background = bodyColor;
+            chestLid.style.background = `linear-gradient(to bottom, ${lidColor}, ${bodyColor})`;
+            chestElement.style.boxShadow = `0 0 30px ${glowColor}`;
+        }
+
+        chestOpening.style.display = 'flex';
+
+        // Store items for sequential reveal
+        let currentItemIndex = 0;
+        const timeline = [];
+
+        // Build timeline for sequential item reveals
+        timeline.push({ time: 0, action: () => {
+            chestElement.classList.add('shake');
+        }});
+
+        timeline.push({ time: 800, action: () => {
+            chestElement.classList.remove('shake');
+            chestLid.classList.add('open');
+        }});
+
+        // For each item, show stats sequentially
+        let currentTime = 1300;
+        items.forEach((item, index) => {
+            timeline.push({ time: currentTime, action: () => {
+                showItemStats(item, index);
+            }});
+            currentTime += 2000; // 2 seconds per item
+        });
+
+        // Final reveal showing all items together
+        timeline.push({ time: currentTime, action: () => {
+            showFinalReveal();
+        }});
+
+        function showItemStats(item, index) {
+            // Clear previous content
+            characterReveal.textContent = '';
+            rarityText.textContent = '';
+            particles.innerHTML = '';
+
+            // Remove old stat reveals
+            const oldStats = chestOpening.querySelectorAll('.stat-reveal');
+            oldStats.forEach(stat => stat.remove());
+
+            if (item.type === 'character') {
+                const char = characters[item.id];
+
+                // Show character emoji
+                characterReveal.textContent = char.emoji;
+                characterReveal.className = 'character-reveal emoji show';
+
+                // Show rarity with "CHARACTER" label
+                rarityGlow.className = `rarity-glow ${char.rarity} show`;
+                rarityText.textContent = `${char.rarity.toUpperCase()} CHARACTER`;
+                rarityText.style.color = rarityColors[char.rarity];
+
+                // Create stat reveal element
+                const statReveal = document.createElement('div');
+                statReveal.className = 'stat-reveal';
+                statReveal.innerHTML = `
+                    <div style="font-size: 24px; font-weight: bold; color: ${rarityColors[char.rarity]}; margin-bottom: 10px;">${char.name}</div>
+                    <div style="font-size: 16px; color: #FFD700;">❤️ HP: ${char.maxHealth}</div>
+                    <div style="font-size: 16px;">⚔️ Normal: ${char.damage}</div>
+                    <div style="font-size: 16px; color: #FF4444;">💥 Special: ${char.specialDamage}</div>
+                    <div style="font-size: 14px; color: ${char.specialType === 'long' ? '#4CAF50' : '#FF9800'};">${char.specialType === 'long' ? '📡 LONG RANGE' : '⚔️ CLOSE RANGE'}</div>
+                    <div style="font-size: 14px; color: #888;">⏱️ Reload: ${(char.reloadTime/60).toFixed(1)}s</div>
+                `;
+                chestOpening.appendChild(statReveal);
+
+                createParticles(particles, char.rarity);
+            } else {
+                // Badge
+                const badge = badges[item.id];
+
+                // Show badge emoji
+                characterReveal.textContent = badge.emoji;
+                characterReveal.className = 'character-reveal emoji show';
+
+                // Show rarity with "BADGE" label
+                rarityGlow.className = `rarity-glow ${badge.rarity} show`;
+                rarityText.textContent = `${badge.rarity.toUpperCase()} BADGE`;
+                rarityText.style.color = rarityColors[badge.rarity];
+
+                // Create stat reveal element
+                const statReveal = document.createElement('div');
+                statReveal.className = 'stat-reveal';
+                statReveal.innerHTML = `
+                    <div style="font-size: 24px; font-weight: bold; color: ${rarityColors[badge.rarity]}; margin-bottom: 10px;">${badge.name}</div>
+                    <div style="font-size: 16px; color: #888; text-align: center; max-width: 300px;">${badge.description}</div>
+                `;
+                chestOpening.appendChild(statReveal);
+
+                createParticles(particles, badge.rarity);
+            }
+        }
+
+        function showFinalReveal() {
+            // Clear stat reveals
+            const oldStats = chestOpening.querySelectorAll('.stat-reveal');
+            oldStats.forEach(stat => stat.remove());
+
+            // Determine highest rarity
+            let highestRarity = 'common';
+            items.forEach(item => {
+                const itemRarity = item.type === 'character' ? characters[item.id].rarity : badges[item.id].rarity;
+                if (itemRarity === 'legendary') highestRarity = 'legendary';
+                else if (itemRarity === 'epic' && highestRarity !== 'legendary') highestRarity = 'epic';
+                else if (itemRarity === 'rare' && highestRarity !== 'legendary' && highestRarity !== 'epic') highestRarity = 'rare';
+            });
+
+            // Show all items together
+            let displayText = '';
+            items.forEach(item => {
+                if (item.type === 'character') {
+                    displayText += characters[item.id].emoji;
+                } else {
+                    displayText += badges[item.id].emoji;
+                }
+            });
+
+            characterReveal.textContent = displayText;
+            rarityGlow.className = `rarity-glow ${highestRarity} show`;
+
+            if (items.length > 1) {
+                rarityText.textContent = `${items.length} ITEMS!`;
+            } else {
+                const item = items[0];
+                const itemRarity = item.type === 'character' ? characters[item.id].rarity : badges[item.id].rarity;
+                rarityText.textContent = itemRarity.toUpperCase();
+            }
+
+            rarityText.style.color = rarityColors[highestRarity];
+            characterReveal.className = 'character-reveal emoji show';
+            particles.innerHTML = '';
+            createParticles(particles, highestRarity);
+
+            // End animation after 1.5 seconds
+            setTimeout(() => {
+                endUnifiedChestAnimation(items, chestType);
+            }, 1500);
+        }
+
+        // Store animation state
+        currentUnifiedChestAnimation = {
+            timeouts: [],
+            items: items,
+            chestType: chestType
+        };
+
+        // Schedule all timeline events
+        timeline.forEach(event => {
+            const timeout = setTimeout(event.action, event.time);
+            currentUnifiedChestAnimation.timeouts.push(timeout);
+        });
+    }
+
+    function endUnifiedChestAnimation(items, chestType) {
+        const chestOpening = document.getElementById('chestOpening');
+
+        // Cleanup
+        if (currentUnifiedChestAnimation) {
+            currentUnifiedChestAnimation = null;
+        }
+
+        chestOpening.style.display = 'none';
+
+        let playerName = '';
+        if (gameState.gameMode === 'multiplayer') {
+            playerName = gameState.currentShopPlayer === 1 ? 'Player 1' : 'Player 2';
+        }
+
+        if (items.length > 1) {
+            let message = `${playerName ? playerName + ' ' : ''}${chestType.toUpperCase()} CHEST OPENED!\n`;
+            items.forEach((item, index) => {
+                if (item.type === 'character') {
+                    const char = characters[item.id];
+                    message += `${index + 1}. ${char.name} ${char.emoji} (${char.rarity.toUpperCase()})\n`;
+                } else {
+                    const badge = badges[item.id];
+                    message += `${index + 1}. ${badge.name} ${badge.emoji} (${badge.rarity.toUpperCase()})\n`;
+                }
+            });
+            showNotification(message);
+        } else {
+            const item = items[0];
+            if (item.type === 'character') {
+                const char = characters[item.id];
+                showNotification(`${playerName ? playerName + ' ' : ''}unlocked ${char.name}! ${char.emoji}\n${char.rarity.toUpperCase()} • HP: ${char.maxHealth} • Normal: ${char.damage} • Special: ${char.specialDamage}`);
+            } else {
+                const badge = badges[item.id];
+                showNotification(`${playerName ? playerName + ' ' : ''}unlocked ${badge.name}! ${badge.emoji}\n${badge.rarity.toUpperCase()} • ${badge.description}`);
+            }
+        }
+    }
+
     function createParticles(container, rarity) {
         const numParticles = rarity === 'legendary' ? 20 : rarity === 'epic' ? 15 : rarity === 'rare' ? 10 : 8;
         
@@ -8991,6 +10934,127 @@
             
             container.appendChild(particle);
         }
+    }
+
+    // ADDON CHEST ANIMATION
+    function showAddonChestAnimation(addonKey, chestType) {
+        const chestOpening = document.getElementById('chestOpening');
+        const characterReveal = document.getElementById('characterReveal');
+        const rarityGlow = document.getElementById('rarityGlow');
+        const rarityText = document.getElementById('rarityText');
+        const particles = document.getElementById('particles');
+
+        const addon = addons[addonKey];
+        const rarityColors = {
+            common: '#9e9e9e',
+            rare: '#2196f3',
+            epic: '#9c27b0',
+            legendary: '#ff9800'
+        };
+
+        const chestColors = {
+            common: '#9e9e9e',
+            rare: '#2196f3',
+            epic: '#9c27b0',
+            legendary: '#ff9800'
+        };
+
+        // Show chest opening screen
+        chestOpening.style.display = 'flex';
+        characterReveal.textContent = '';
+        rarityGlow.className = 'rarity-glow';
+        rarityText.textContent = '';
+        particles.innerHTML = '';
+
+        // Remove any existing stat reveals
+        const existingStatReveals = chestOpening.querySelectorAll('.stat-reveal');
+        existingStatReveals.forEach(el => el.remove());
+
+        // Set chest color
+        chestOpening.style.background = `radial-gradient(circle, ${chestColors[chestType]}, #1a1a1a)`;
+
+        // Animation timeline
+        const timeline = [
+            { time: 0, action: () => {
+                // Chest shake
+                chestOpening.style.animation = 'shake 0.8s ease-in-out';
+            }},
+            { time: 800, action: () => {
+                // Lid opens
+                chestOpening.style.animation = 'lidOpen 0.5s ease-out';
+            }},
+            { time: 1300, action: () => {
+                // Create canvas to draw addon
+                const addonCanvas = document.createElement('canvas');
+                addonCanvas.width = 300;
+                addonCanvas.height = 300;
+                addonCanvas.style.margin = '20px auto';
+                const addonCtx = addonCanvas.getContext('2d');
+
+                // Extract country/sport from key
+                const getCountrySport = (key) => {
+                    if (!key) return { country: null, sport: null };
+                    const country = key.includes('_') ? key.split('_')[1] : null;
+                    const sports = ['soccer', 'basketball', 'baseball', 'football', 'hockey', 'tennis', 'golf', 'boxing', 'racing', 'cycling'];
+                    const sport = sports.find(s => key.includes(s));
+                    return { country, sport };
+                };
+
+                const { country, sport } = getCountrySport(addonKey);
+
+                // Draw the addon based on type with proper item rendering
+                addonCtx.shadowColor = addon.color;
+                addonCtx.shadowBlur = 20;
+
+                if (addon.type === 'hat') {
+                    drawHat(addonCtx, 150, 150, 60, 50, addon.color, country, sport);
+                } else if (addon.type === 'shirt') {
+                    drawShirt(addonCtx, 150, 80, 220, 90, 80, 210, 80, 60, 180, 240, 180, 50, addon.color, country, sport);
+                } else if (addon.type === 'pants') {
+                    drawPants(addonCtx, 150, 80, 120, 250, 180, 250, 35, addon.color, country, sport);
+                } else if (addon.type === 'shoes') {
+                    drawShoe(addonCtx, 60, 150, 70, 40, addon.color, country, sport);
+                    drawShoe(addonCtx, 170, 150, 70, 40, addon.color, country, sport);
+                }
+
+                characterReveal.innerHTML = '';
+                characterReveal.appendChild(addonCanvas);
+
+                // Show rarity
+                rarityGlow.className = `rarity-glow ${addon.rarity} show`;
+                rarityText.textContent = `${addon.rarity.toUpperCase()} ${addon.type.toUpperCase()}`;
+                rarityText.style.color = rarityColors[addon.rarity];
+
+                // Create stat reveal element
+                const statReveal = document.createElement('div');
+                statReveal.className = 'stat-reveal';
+                statReveal.innerHTML = `
+                    <div style="font-size: 24px; font-weight: bold; color: ${rarityColors[addon.rarity]}; margin-bottom: 10px;">${addon.name}</div>
+                    <div style="font-size: 16px; color: #FFD700;">Type: ${addon.type.toUpperCase()}</div>
+                    <div style="font-size: 16px; color: ${addon.color};">Primary Color: ${addon.color}</div>
+                    <div style="font-size: 14px; color: #AAA;">Pattern: ${addon.pattern}</div>
+                `;
+                chestOpening.appendChild(statReveal);
+
+                // Create particles
+                createParticles(particles, addon.rarity);
+            }},
+            { time: 3300, action: () => {
+                // Final reveal - show all info
+                const playerName = gameState.gameMode === 'multiplayer' ? `Player ${gameState.currentShopPlayer}` : '';
+                showNotification(`${playerName ? playerName + ' ' : ''}unlocked ${addon.name}!\n${addon.rarity.toUpperCase()} ${addon.type.toUpperCase()}`);
+            }},
+            { time: 5300, action: () => {
+                // Close chest opening screen
+                chestOpening.style.display = 'none';
+                chestOpening.style.animation = '';
+            }}
+        ];
+
+        // Execute timeline
+        timeline.forEach(event => {
+            setTimeout(event.action, event.time);
+        });
     }
 
     // Battle Preparation Screen Functions
@@ -9111,20 +11175,94 @@
         startBattle();
     }
 
-    // CHOOSE YOUR CHARACTER Functions - NEW!
+    // CHOOSE YOUR ITEM Functions - Unified for Characters and Badges!
+    function showChooseItemScreen() {
+        updateChooseItemGrid();
+        showScreen('chooseCharacterScreen');
+    }
+
     function showChooseCharacterScreen() {
         updateChooseCharacterGrid();
         showScreen('chooseCharacterScreen');
     }
 
+    function updateChooseItemGrid() {
+        const grid = document.getElementById('chooseCharacterGrid');
+        grid.innerHTML = '';
+
+        // Add section header for characters
+        if (gameState.chooseChestAvailableChars && gameState.chooseChestAvailableChars.length > 0) {
+            const charHeader = document.createElement('div');
+            charHeader.style.cssText = 'width: 100%; text-align: center; color: #FFD700; font-size: 20px; font-weight: bold; margin: 10px 0; grid-column: 1 / -1;';
+            charHeader.textContent = '🎭 CHARACTERS';
+            grid.appendChild(charHeader);
+
+            gameState.chooseChestAvailableChars.forEach(charKey => {
+                const char = characters[charKey];
+                const card = document.createElement('div');
+                card.className = 'character-card';
+                card.style.borderColor = rarityColors[char.rarity];
+                card.style.cursor = 'pointer';
+                card.innerHTML = `
+                    <div class="character-avatar" style="background: ${char.color}">
+                        <span class="emoji">${char.emoji}</span>
+                    </div>
+                    <div style="font-weight: bold; color: ${rarityColors[char.rarity]};">${char.name}</div>
+                    <div style="color: ${rarityColors[char.rarity]}; font-size: 12px; text-transform: uppercase;">${char.rarity}</div>
+                    <div style="font-size: 11px; color: #FFD700;">HP: ${char.maxHealth}</div>
+                    <div style="font-size: 11px;">Normal: ${char.damage}</div>
+                    <div style="font-size: 11px; color: #FF4444;">Special: ${char.specialDamage}</div>
+                    <div style="margin-top: 8px; background: #5D5CDE; color: white; padding: 4px 8px; border-radius: 5px; font-size: 12px; font-weight: bold;">🎯 CHOOSE!</div>
+                `;
+
+                card.onclick = () => {
+                    selectChosenItem('character', charKey);
+                };
+
+                grid.appendChild(card);
+            });
+        }
+
+        // Add section header for badges
+        if (gameState.chooseChestAvailableBadges && gameState.chooseChestAvailableBadges.length > 0) {
+            const badgeHeader = document.createElement('div');
+            badgeHeader.style.cssText = 'width: 100%; text-align: center; color: #FFD700; font-size: 20px; font-weight: bold; margin: 20px 0 10px 0; grid-column: 1 / -1;';
+            badgeHeader.textContent = '🏅 BADGES';
+            grid.appendChild(badgeHeader);
+
+            gameState.chooseChestAvailableBadges.forEach(badgeKey => {
+                const badge = badges[badgeKey];
+                const card = document.createElement('div');
+                card.className = 'character-card';
+                card.style.borderColor = rarityColors[badge.rarity];
+                card.style.cursor = 'pointer';
+                card.innerHTML = `
+                    <div class="character-avatar" style="background: linear-gradient(135deg, ${rarityColors[badge.rarity]}, #1a1a2e)">
+                        <span class="emoji">${badge.emoji}</span>
+                    </div>
+                    <div style="font-weight: bold; color: ${rarityColors[badge.rarity]};">${badge.name}</div>
+                    <div style="color: ${rarityColors[badge.rarity]}; font-size: 12px; text-transform: uppercase;">${badge.rarity}</div>
+                    <div style="font-size: 11px; color: #888; margin-top: 5px;">${badge.description}</div>
+                    <div style="margin-top: 8px; background: #5D5CDE; color: white; padding: 4px 8px; border-radius: 5px; font-size: 12px; font-weight: bold;">🎯 CHOOSE!</div>
+                `;
+
+                card.onclick = () => {
+                    selectChosenItem('badge', badgeKey);
+                };
+
+                grid.appendChild(card);
+            });
+        }
+    }
+
     function updateChooseCharacterGrid() {
         const grid = document.getElementById('chooseCharacterGrid');
         grid.innerHTML = '';
-        
+
         if (!gameState.chooseChestAvailableChars) {
             return;
         }
-        
+
         gameState.chooseChestAvailableChars.forEach(charKey => {
             const char = characters[charKey];
             const card = document.createElement('div');
@@ -9144,13 +11282,57 @@
                 <div style="font-size: 11px; color: #888;">Reload: ${(char.reloadTime/60).toFixed(1)}s</div>
                 <div style="margin-top: 8px; background: #5D5CDE; color: white; padding: 4px 8px; border-radius: 5px; font-size: 12px; font-weight: bold;">🎯 CHOOSE THIS!</div>
             `;
-            
+
             card.onclick = () => {
                 selectChosenCharacter(charKey);
             };
-            
+
             grid.appendChild(card);
         });
+    }
+
+    function selectChosenItem(itemType, itemKey) {
+        // Add the chosen item to the player's collection
+        if (itemType === 'character') {
+            if (gameState.gameMode === 'multiplayer') {
+                if (gameState.currentShopPlayer === 1) {
+                    gameState.player1Characters.push(itemKey);
+                } else {
+                    gameState.player2Characters.push(itemKey);
+                }
+            } else {
+                gameState.unlockedCharacters.push(itemKey);
+            }
+        } else {
+            // Badge
+            if (gameState.gameMode === 'multiplayer') {
+                if (gameState.currentShopPlayer === 1) {
+                    if (!gameState.player1Badges) gameState.player1Badges = [];
+                    gameState.player1Badges.push(itemKey);
+                } else {
+                    if (!gameState.player2Badges) gameState.player2Badges = [];
+                    gameState.player2Badges.push(itemKey);
+                }
+            } else {
+                if (!gameState.unlockedBadges) gameState.unlockedBadges = [];
+                gameState.unlockedBadges.push(itemKey);
+            }
+
+            // Track badge collection
+            trackChallengeProgress('badge_collected', { rarity: badges[itemKey].rarity });
+        }
+
+        // Clean up the choose chest state
+        gameState.chooseChestAvailableChars = null;
+        gameState.chooseChestAvailableBadges = null;
+
+        // Go back to shop screen first
+        showShop();
+
+        // Then show unified chest animation
+        setTimeout(() => {
+            showUnifiedChestAnimation([{ type: itemType, id: itemKey }], 'choose');
+        }, 100);
     }
 
     function selectChosenCharacter(charKey) {
@@ -9182,22 +11364,23 @@
     }
 
     function cancelChooseCharacter() {
-        // Refund the coins since they cancelled
+        // Refund the coins since they cancelled (1500 for choose chest)
         if (gameState.gameMode === 'multiplayer') {
             if (gameState.currentShopPlayer === 1) {
-                gameState.player1Coins = safeCoins(gameState.player1Coins + 1000);
+                gameState.player1Coins = safeCoins(gameState.player1Coins + 1500);
             } else {
-                gameState.player2Coins = safeCoins(gameState.player2Coins + 1000);
+                gameState.player2Coins = safeCoins(gameState.player2Coins + 1500);
             }
             updateMultiplayerCoinsDisplay();
         } else {
-            gameState.coins = safeCoins(gameState.coins + 1000);
+            gameState.coins = safeCoins(gameState.coins + 1500);
             updateSinglePlayerCoinsDisplay();
         }
-        
+
         // Clean up the choose chest state
         gameState.chooseChestAvailableChars = null;
-        
+        gameState.chooseChestAvailableBadges = null;
+
         // Go back to shop
         showShop();
     }
@@ -9668,14 +11851,19 @@
             progress: 0,
             dateAdded: Date.now()
         });
-        
+
         console.log(`New challenge added: ${newChallenge.name}`);
+
+        // Save game state
+        saveGameState();
     }
 
     // Track challenge progress during battles and other actions
     function trackChallengeProgress(eventType, data = {}) {
+        console.log(`🎯 trackChallengeProgress called! Event: ${eventType}`, data);
+
         if (!gameState.challengeStats) initializeChallengeTracking();
-        
+
         // Update stats based on event type
         switch(eventType) {
             case 'damage_dealt':
@@ -9723,10 +11911,22 @@
                 gameState.challengeStats.raritiesWon.add(data.rarity);
 
                 // Rarity-specific wins
-                if (data.rarity === 'common') gameState.challengeStats.commonWins++;
-                if (data.rarity === 'rare') gameState.challengeStats.rareWins++;
-                if (data.rarity === 'epic') gameState.challengeStats.epicWins++;
-                if (data.rarity === 'legendary') gameState.challengeStats.legendaryWins++;
+                if (data.rarity === 'common') {
+                    gameState.challengeStats.commonWins++;
+                    console.log(`✅ Common win tracked! Total: ${gameState.challengeStats.commonWins}`);
+                }
+                if (data.rarity === 'rare') {
+                    gameState.challengeStats.rareWins++;
+                    console.log(`✅ Rare win tracked! Total: ${gameState.challengeStats.rareWins}`);
+                }
+                if (data.rarity === 'epic') {
+                    gameState.challengeStats.epicWins++;
+                    console.log(`✅ Epic win tracked! Total: ${gameState.challengeStats.epicWins}`);
+                }
+                if (data.rarity === 'legendary') {
+                    gameState.challengeStats.legendaryWins++;
+                    console.log(`✅ Legendary win tracked! Total: ${gameState.challengeStats.legendaryWins}`);
+                }
 
                 // Underdog wins
                 if (data.rarity === 'common' && (data.enemyRarity === 'epic' || data.enemyRarity === 'legendary')) {
@@ -9743,7 +11943,6 @@
                 break;
             case 'battle_lost':
                 gameState.challengeStats.currentWinStreak = 0;
-                gameState.challengeStats.battlesPlayed++;
                 break;
             case 'battle_started':
                 gameState.challengeStats.battlesPlayed++;
@@ -9821,10 +12020,18 @@
                     progress = gameState.challengeStats.spaceWins;
                     break;
                 case 'badges_collected':
-                    progress = gameState.challengeStats.badgesCollected;
+                    // Count actual unique badges owned
+                    const currentBadges = gameState.gameMode === 'multiplayer'
+                        ? (gameState.currentShopPlayer === 1 ? gameState.player1Badges : gameState.player2Badges) || []
+                        : gameState.unlockedBadges || [];
+                    progress = currentBadges.length;
                     break;
                 case 'legendary_badges':
-                    progress = gameState.challengeStats.legendaryBadges;
+                    // Count actual legendary badges owned
+                    const currentBadgesForLegendary = gameState.gameMode === 'multiplayer'
+                        ? (gameState.currentShopPlayer === 1 ? gameState.player1Badges : gameState.player2Badges) || []
+                        : gameState.unlockedBadges || [];
+                    progress = currentBadgesForLegendary.filter(badgeId => badges[badgeId]?.rarity === 'legendary').length;
                     break;
                 case 'coins_spent':
                     progress = gameState.challengeStats.coinsSpent;
@@ -9877,7 +12084,11 @@
                     progress = gameState.challengeStats.forestWins;
                     break;
                 case 'epic_badges':
-                    progress = gameState.challengeStats.epicBadges;
+                    // Count actual epic badges owned
+                    const currentBadgesForEpic = gameState.gameMode === 'multiplayer'
+                        ? (gameState.currentShopPlayer === 1 ? gameState.player1Badges : gameState.player2Badges) || []
+                        : gameState.unlockedBadges || [];
+                    progress = currentBadgesForEpic.filter(badgeId => badges[badgeId]?.rarity === 'epic').length;
                     break;
                 case 'coins_earned':
                     progress = gameState.challengeStats.coinsEarned;
@@ -9899,6 +12110,159 @@
         });
     }
 
+    // Recalculate all challenge progress (called when opening challenges screen)
+    function recalculateAllChallengeProgress() {
+        if (!gameState.challengeStats) initializeChallengeTracking();
+
+        console.log('🔄 Recalculating challenge progress...');
+        console.log('Challenge Stats:', gameState.challengeStats);
+
+        gameState.challenges.forEach((challenge, index) => {
+            let progress = 0;
+
+            switch(challenge.type) {
+                case 'damage':
+                    progress = gameState.challengeStats.totalDamage;
+                    break;
+                case 'special_uses':
+                    progress = gameState.challengeStats.specialUses;
+                    break;
+                case 'quick_wins':
+                    progress = gameState.challengeStats.quickWins;
+                    break;
+                case 'tank_kills':
+                    progress = gameState.challengeStats.tankKills;
+                    break;
+                case 'low_hp_wins':
+                    progress = gameState.challengeStats.lowHpWins;
+                    break;
+                case 'low_damage_wins':
+                    progress = gameState.challengeStats.lowDamageWins;
+                    break;
+                case 'perfect_wins':
+                    progress = gameState.challengeStats.perfectWins;
+                    break;
+                case 'comeback_wins':
+                    progress = gameState.challengeStats.comebackWins;
+                    break;
+                case 'win_streak':
+                    progress = gameState.challengeStats.maxWinStreak;
+                    break;
+                case 'different_char_wins':
+                    progress = gameState.challengeStats.charactersUsed.size;
+                    break;
+                case 'rarity_wins':
+                    progress = gameState.challengeStats.raritiesWon.size;
+                    break;
+                case 'underdog_wins':
+                    progress = gameState.challengeStats.underdogWins;
+                    break;
+                case 'trophy_earned':
+                    progress = gameState.challengeStats.trophiesEarned;
+                    break;
+                case 'high_trophy_battle':
+                    progress = gameState.challengeStats.highTrophyBattles;
+                    break;
+                case 'different_map_wins':
+                    progress = gameState.challengeStats.mapsWon.size;
+                    break;
+                case 'volcano_wins':
+                    progress = gameState.challengeStats.volcanoWins;
+                    break;
+                case 'space_wins':
+                    progress = gameState.challengeStats.spaceWins;
+                    break;
+                case 'badges_collected':
+                    const currentBadges = gameState.gameMode === 'multiplayer'
+                        ? (gameState.currentShopPlayer === 1 ? gameState.player1Badges : gameState.player2Badges) || []
+                        : gameState.unlockedBadges || [];
+                    progress = currentBadges.length;
+                    break;
+                case 'legendary_badges':
+                    const currentBadgesForLegendary = gameState.gameMode === 'multiplayer'
+                        ? (gameState.currentShopPlayer === 1 ? gameState.player1Badges : gameState.player2Badges) || []
+                        : gameState.unlockedBadges || [];
+                    progress = currentBadgesForLegendary.filter(badgeId => badges[badgeId]?.rarity === 'legendary').length;
+                    break;
+                case 'coins_spent':
+                    progress = gameState.challengeStats.coinsSpent;
+                    break;
+                case 'chests_opened':
+                    progress = gameState.challengeStats.chestsOpened;
+                    break;
+                case 'ultra_quick_wins':
+                    progress = gameState.challengeStats.ultraQuickWins;
+                    break;
+                case 'giant_kills':
+                    progress = gameState.challengeStats.giantKills;
+                    break;
+                case 'clutch_wins':
+                    progress = gameState.challengeStats.clutchWins;
+                    break;
+                case 'damage_taken':
+                    progress = gameState.challengeStats.damageTaken;
+                    break;
+                case 'medium_damage_wins':
+                    progress = gameState.challengeStats.mediumDamageWins;
+                    break;
+                case 'total_wins':
+                    progress = gameState.challengeStats.totalWins;
+                    break;
+                case 'common_wins':
+                    progress = gameState.challengeStats.commonWins;
+                    break;
+                case 'rare_wins':
+                    progress = gameState.challengeStats.rareWins;
+                    break;
+                case 'epic_wins':
+                    progress = gameState.challengeStats.epicWins;
+                    break;
+                case 'legendary_wins':
+                    progress = gameState.challengeStats.legendaryWins;
+                    break;
+                case 'mega_trophy_battle':
+                    progress = gameState.challengeStats.megaTrophyBattles;
+                    break;
+                case 'ultra_trophy_battle':
+                    progress = gameState.challengeStats.ultraTrophyBattles;
+                    break;
+                case 'arena_wins':
+                    progress = gameState.challengeStats.arenaWins;
+                    break;
+                case 'forest_wins':
+                    progress = gameState.challengeStats.forestWins;
+                    break;
+                case 'epic_badges':
+                    const currentBadgesForEpic = gameState.gameMode === 'multiplayer'
+                        ? (gameState.currentShopPlayer === 1 ? gameState.player1Badges : gameState.player2Badges) || []
+                        : gameState.unlockedBadges || [];
+                    progress = currentBadgesForEpic.filter(badgeId => badges[badgeId]?.rarity === 'epic').length;
+                    break;
+                case 'coins_earned':
+                    progress = gameState.challengeStats.coinsEarned;
+                    break;
+                case 'battles_played':
+                    progress = gameState.challengeStats.battlesPlayed;
+                    break;
+                case 'flawless_wins':
+                    progress = gameState.challengeStats.flawlessWins;
+                    break;
+            }
+
+            challenge.progress = Math.min(progress, challenge.target);
+
+            console.log(`📊 Challenge: ${challenge.name} (${challenge.type}) - Progress: ${challenge.progress}/${challenge.target}`);
+
+            // Complete challenge if target reached
+            if (challenge.progress >= challenge.target && !gameState.completedChallenges.includes(challenge.id)) {
+                completeChallenge(challenge, index);
+            }
+        });
+
+        // Save game state after tracking progress
+        saveGameState();
+    }
+
     function completeChallenge(challenge, index) {
         // Mark challenge as claimed (will be shown in loading screen)
         challenge.claimed = true;
@@ -9912,15 +12276,146 @@
         // This function just marks the challenge as ready to be claimed
 
         console.log(`Challenge ready to claim: ${challenge.name}`);
+
+        // Save game state
+        saveGameState();
     }
+
+    // Save gameState to localStorage
+    function saveGameState() {
+        try {
+            // Convert Sets to Arrays for JSON serialization
+            const stateToSave = {
+                ...gameState,
+                challengeStats: gameState.challengeStats ? {
+                    ...gameState.challengeStats,
+                    charactersUsed: Array.from(gameState.challengeStats.charactersUsed || []),
+                    raritiesWon: Array.from(gameState.challengeStats.raritiesWon || []),
+                    mapsWon: Array.from(gameState.challengeStats.mapsWon || [])
+                } : null
+            };
+            localStorage.setItem('battleArenaGameState', JSON.stringify(stateToSave));
+            console.log('💾 Game state saved!');
+        } catch (error) {
+            console.error('Failed to save game state:', error);
+        }
+    }
+
+    // Load gameState from localStorage
+    function loadGameState() {
+        try {
+            const saved = localStorage.getItem('battleArenaGameState');
+            if (saved) {
+                const loadedState = JSON.parse(saved);
+
+                // Merge loaded state with default gameState
+                Object.assign(gameState, loadedState);
+
+                // Convert Arrays back to Sets
+                if (gameState.challengeStats) {
+                    gameState.challengeStats.charactersUsed = new Set(gameState.challengeStats.charactersUsed || []);
+                    gameState.challengeStats.raritiesWon = new Set(gameState.challengeStats.raritiesWon || []);
+                    gameState.challengeStats.mapsWon = new Set(gameState.challengeStats.mapsWon || []);
+                }
+
+                console.log('💾 Game state loaded!', gameState);
+            } else {
+                console.log('💾 No saved game state found, starting fresh!');
+            }
+        } catch (error) {
+            console.error('Failed to load game state:', error);
+        }
+    }
+
+    // Auto-save gameState whenever it changes
+    function autoSaveGameState() {
+        saveGameState();
+    }
+
+    // Load game state on startup
+    loadGameState();
+
+    // Helper function to reset coins (for testing/debugging)
+    window.resetCoins = function() {
+        gameState.coins = 75;
+        gameState.player1Coins = 75;
+        gameState.player2Coins = 75;
+        saveGameState();
+        updateSinglePlayerCoinsDisplay();
+        updateMultiplayerCoinsDisplay();
+        console.log('💰 Coins reset to 75!');
+    };
+
+    // Helper function to clear all saved data
+    window.resetGameData = function() {
+        if (confirm('Are you sure you want to reset ALL game data? This cannot be undone!')) {
+            localStorage.removeItem('battleArenaGameState');
+            location.reload();
+        }
+    };
+
+    // Reset Account function with confirmation
+    window.confirmResetAccount = function() {
+        const confirmation = confirm('⚠️ WARNING ⚠️\n\nThis will DELETE ALL your progress:\n• All coins\n• All unlocked characters\n• All badges\n• All trophies\n• All challenge progress\n• Everything!\n\nYou will start completely fresh with only 75 coins and 3 starter characters.\n\nAre you ABSOLUTELY SURE?');
+
+        if (confirmation) {
+            const doubleCheck = confirm('🔥 FINAL WARNING 🔥\n\nThis action CANNOT be undone!\n\nClick OK to permanently delete everything and restart.');
+
+            if (doubleCheck) {
+                localStorage.removeItem('battleArenaGameState');
+                showNotification('🔥 Account Reset! Starting fresh...');
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            }
+        }
+    };
 
     // Initialize on game start
     initializeChallengeTracking();
 
-    // Don't generate initial challenges - they come from trophy road only!
+    // Generate initial challenges if none exist
+    if (!gameState.challenges || gameState.challenges.length === 0) {
+        console.log('🎯 Generating initial challenges...');
+        for (let i = 0; i < 3; i++) {
+            generateNewChallenge();
+        }
+    }
 
     // Initialize universal coin display
     updateUniversalCoinsDisplay();
 
     // Initialize game
     console.log(`Epic Battle Arena Loaded with ${Object.keys(characters).length} characters!`);
+
+    // DEBUG: Log initial state
+    console.log('=== INITIAL GAME STATE ===');
+    console.log('Challenges:', gameState.challenges);
+    console.log('Challenge Stats:', gameState.challengeStats);
+    console.log('Completed Challenges:', gameState.completedChallenges);
+
+    // DEBUG: Make trackChallengeProgress globally accessible for testing
+    window.testTrackProgress = trackChallengeProgress;
+    window.testRecalculate = recalculateAllChallengeProgress;
+    window.gameState = gameState;
+
+    // DEBUG: Test function to simulate a battle win
+    window.testBattleWin = function() {
+        console.log('🧪 Testing battle win tracking...');
+        trackChallengeProgress('battle_won', {
+            timeRemaining: 70,
+            playerHP: 200,
+            playerMaxHP: 200,
+            damageTaken: 0,
+            enemyHP: 300,
+            trophiesEarned: 10,
+            character: 'Spider',
+            rarity: 'common',
+            enemyRarity: 'common',
+            map: 'volcano'
+        });
+        console.log('✅ Test complete! Check gameState.challengeStats');
+        console.log('Common wins:', gameState.challengeStats.commonWins);
+        console.log('Total wins:', gameState.challengeStats.totalWins);
+        console.log('Volcano wins:', gameState.challengeStats.volcanoWins);
+    };
