@@ -5318,16 +5318,16 @@
                     drawPants(ctx, centerX, centerY + 20, leftFootX, leftFootY - 3, rightFootX, rightFootY - 3, 8, addons[pantsKey].color, country, sport);
                 }
 
-                // Draw SHIRT on animated body and arms (shirt will cover the arms)
+                // Draw SHIRT on animated body and arms (shirt will cover the arms) - thinner
                 if (shirtKey && addons[shirtKey]) {
                     const { country, sport } = getCountrySport(shirtKey);
-                    drawShirt(ctx, centerX, centerY - 20, centerY + 20, leftShoulderX, leftShoulderY, rightShoulderX, rightShoulderY, leftHandX, leftHandY, rightHandX, rightHandY, 12, addons[shirtKey].color, country, sport);
+                    drawShirt(ctx, centerX, centerY - 20, centerY + 20, leftShoulderX, leftShoulderY, rightShoulderX, rightShoulderY, leftHandX, leftHandY, rightHandX, rightHandY, 9, addons[shirtKey].color, country, sport);
                 }
 
-                // Draw HAT on top of head (not inside it) - higher in battle
+                // Draw HAT on top of head (not inside it) - lower in battle
                 if (hatKey && addons[hatKey]) {
                     const { country, sport } = getCountrySport(hatKey);
-                    drawHat(ctx, centerX, centerY - 55, 15, 12, addons[hatKey].color, country, sport);
+                    drawHat(ctx, centerX, centerY - 45, 15, 12, addons[hatKey].color, country, sport);
                 }
             }
 
@@ -8189,7 +8189,11 @@
 
         // Generate random addons for CPU (single player only)
         if (gameState.gameMode !== 'multiplayer') {
-            const player1Addons = gameState.equippedAddons || {};
+            // Get player's equipped addons from their selected character
+            const player1CharKey = gameState.selectedCharacter;
+            const player1Addons = (gameState.characterEquippedAddons && gameState.characterEquippedAddons[player1CharKey])
+                ? gameState.characterEquippedAddons[player1CharKey]
+                : {};
             const cpuAddons = {};
 
             // Get all addon keys by type
@@ -8213,55 +8217,32 @@
             cpuAddons.shoes = getRandomAddon(shoesKeys, player1Addons.shoes);
 
             // Store CPU addons temporarily for this battle
-            gameState.cpuEquippedAddons = cpuAddons;
+            // Also store them in characterEquippedAddons for the CPU character
+            const cpuCharKey = enemyChar;
+            if (!gameState.characterEquippedAddons) {
+                gameState.characterEquippedAddons = {};
+            }
+            gameState.characterEquippedAddons[cpuCharKey] = cpuAddons;
         }
 
         // Display equipped addons
         const player1AddonsDiv = document.getElementById('player1Addons');
         const player2AddonsDiv = document.getElementById('player2Addons');
 
-        const player1Addons = gameState.gameMode === 'multiplayer' ? gameState.player1EquippedAddons : gameState.equippedAddons;
-        const player2Addons = gameState.gameMode === 'multiplayer' ? gameState.player2EquippedAddons : gameState.cpuEquippedAddons;
+        // Get addons from characterEquippedAddons based on selected characters
+        const player1CharKey = gameState.selectedCharacter;
+        const player2CharKey = enemyChar;
 
-        // Display Player 1 addons
-        if (player1Addons && (player1Addons.hat || player1Addons.shirt || player1Addons.pants || player1Addons.shoes)) {
-            let addonText = '<div style="font-weight: bold; margin-bottom: 3px;">Equipped:</div>';
-            if (player1Addons.hat && addons[player1Addons.hat]) {
-                addonText += `<div>Hat: ${addons[player1Addons.hat].name}</div>`;
-            }
-            if (player1Addons.shirt && addons[player1Addons.shirt]) {
-                addonText += `<div>Shirt: ${addons[player1Addons.shirt].name}</div>`;
-            }
-            if (player1Addons.pants && addons[player1Addons.pants]) {
-                addonText += `<div>Pants: ${addons[player1Addons.pants].name}</div>`;
-            }
-            if (player1Addons.shoes && addons[player1Addons.shoes]) {
-                addonText += `<div>Shoes: ${addons[player1Addons.shoes].name}</div>`;
-            }
-            player1AddonsDiv.innerHTML = addonText;
-        } else {
-            player1AddonsDiv.innerHTML = '';
-        }
+        const player1Addons = (gameState.characterEquippedAddons && gameState.characterEquippedAddons[player1CharKey])
+            ? gameState.characterEquippedAddons[player1CharKey]
+            : {};
+        const player2Addons = (gameState.characterEquippedAddons && gameState.characterEquippedAddons[player2CharKey])
+            ? gameState.characterEquippedAddons[player2CharKey]
+            : {};
 
-        // Display Player 2/CPU addons
-        if (player2Addons && (player2Addons.hat || player2Addons.shirt || player2Addons.pants || player2Addons.shoes)) {
-            let addonText = '<div style="font-weight: bold; margin-bottom: 3px;">Equipped:</div>';
-            if (player2Addons.hat && addons[player2Addons.hat]) {
-                addonText += `<div>Hat: ${addons[player2Addons.hat].name}</div>`;
-            }
-            if (player2Addons.shirt && addons[player2Addons.shirt]) {
-                addonText += `<div>Shirt: ${addons[player2Addons.shirt].name}</div>`;
-            }
-            if (player2Addons.pants && addons[player2Addons.pants]) {
-                addonText += `<div>Pants: ${addons[player2Addons.pants].name}</div>`;
-            }
-            if (player2Addons.shoes && addons[player2Addons.shoes]) {
-                addonText += `<div>Shoes: ${addons[player2Addons.shoes].name}</div>`;
-            }
-            player2AddonsDiv.innerHTML = addonText;
-        } else {
-            player2AddonsDiv.innerHTML = '';
-        }
+        // Don't display addon text during battle - addons are visible on characters
+        player1AddonsDiv.innerHTML = '';
+        player2AddonsDiv.innerHTML = '';
         
         console.log('=== STARTING BATTLE ===');
         console.log('Selected character:', gameState.selectedCharacter);
@@ -8634,12 +8615,23 @@
         ctx.arc(neckX, neckY, width * 0.4, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw logo on chest
+        // Draw logo on chest - ALWAYS draw something!
         const chestY = neckY + (waistY - neckY) * 0.4;
         if (country) {
             drawCountryFlag(ctx, neckX - width * 0.8, chestY - width * 0.4, width * 1.6, width * 0.8, country);
         } else if (sport) {
             drawSportLogo(ctx, neckX, chestY, width * 0.5, sport);
+        } else {
+            // Default design: Draw a number or simple pattern
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.font = `bold ${width * 1.5}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            // Generate a random-ish number based on color (so it's consistent)
+            const colorHash = color.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const number = (colorHash % 99) + 1;
+            ctx.fillText(number.toString(), neckX, chestY);
+            ctx.textAlign = 'left';
         }
 
         ctx.restore();
@@ -9570,8 +9562,18 @@
             return;
         }
 
-        // Select addon by rarity
-        const newAddon = selectItemByChestRarity(lockedAddons, chestRarities[chestType], 'addon');
+        // First, select addon TYPE with equal 25% chance for each
+        const addonTypes = ['hat', 'shirt', 'pants', 'shoes'];
+        const randomType = addonTypes[Math.floor(Math.random() * addonTypes.length)];
+
+        // Filter locked addons by the selected type
+        const lockedAddonsOfType = lockedAddons.filter(key => addons[key].type === randomType);
+
+        // If no locked addons of this type, pick from any available type
+        const addonsToChooseFrom = lockedAddonsOfType.length > 0 ? lockedAddonsOfType : lockedAddons;
+
+        // Select addon by rarity from the chosen type
+        const newAddon = selectItemByChestRarity(addonsToChooseFrom, chestRarities[chestType], 'addon');
 
         // Add to collection
         if (gameState.gameMode === 'multiplayer') {
@@ -12692,8 +12694,12 @@
         }
     }
 
-    // Initialize universal coin display
-    updateUniversalCoinsDisplay();
+    // Initialize universal coin display (wrapped in try-catch to prevent errors)
+    try {
+        updateUniversalCoinsDisplay();
+    } catch(err) {
+        console.log('Coin display will be initialized when DOM is ready');
+    }
 
     // Initialize game
     console.log(`Epic Battle Arena Loaded with ${Object.keys(characters).length} characters!`);
@@ -12729,3 +12735,36 @@
         console.log('Total wins:', gameState.challengeStats.totalWins);
         console.log('Volcano wins:', gameState.challengeStats.volcanoWins);
     };
+
+    // I+O Coin Cheat - Simple and working!
+    window.cheatKeys = {};
+    window.cheatUsed = false;
+
+    window.addEventListener('keydown', function(e) {
+        window.cheatKeys[e.code] = true;
+        if (window.cheatKeys['KeyI'] && window.cheatKeys['KeyO'] && !window.cheatUsed) {
+            if (!gameState.battle || !gameState.battle.gameRunning) {
+                gameState.coins += 1500;
+                saveGameState();
+                try {
+                    updateUniversalCoinsDisplay();
+                } catch(err) {
+                    // Ignore if display not ready yet
+                }
+                try {
+                    showNotification('💰 +1500 coins!', 'success');
+                } catch(err) {
+                    // Ignore if notification not ready yet
+                }
+                window.cheatUsed = true;
+            }
+        }
+    }, false);
+
+    window.addEventListener('keyup', function(e) {
+        window.cheatKeys[e.code] = false;
+        if (!window.cheatKeys['KeyI'] && !window.cheatKeys['KeyO']) {
+            window.cheatUsed = false;
+        }
+    }, false);
+
