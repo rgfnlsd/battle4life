@@ -4681,7 +4681,7 @@
                 this.onGround = true;
 
                 // Add dust cloud effect when landing on ground
-                if (gameState.battle) {
+                if (gameState.battle && gameState.battle.addVisualEffect) {
                     for (let i = 0; i < 4; i++) {
                         gameState.battle.addVisualEffect('dust_cloud',
                             this.x + this.width/2 + (Math.random() - 0.5) * this.width,
@@ -4753,7 +4753,7 @@
                         this.onGround = true;
 
                         // Add dust cloud effect when landing
-                        if (gameState.battle) {
+                        if (gameState.battle && gameState.battle.addVisualEffect) {
                             for (let i = 0; i < 3; i++) {
                                 gameState.battle.addVisualEffect('dust_cloud',
                                     this.x + this.width/2 + (Math.random() - 0.5) * this.width,
@@ -5834,27 +5834,29 @@
                 gameState.battle.addScreenShake(shakeIntensity, 20);
 
                 // Hit sparks
-                for (let i = 0; i < 5; i++) {
-                    gameState.battle.addVisualEffect('hit_spark',
-                        this.x + this.width/2 + (Math.random() - 0.5) * 30,
-                        this.y + this.height/2 + (Math.random() - 0.5) * 30,
+                if (gameState.battle && gameState.battle.addVisualEffect) {
+                    for (let i = 0; i < 5; i++) {
+                        gameState.battle.addVisualEffect('hit_spark',
+                            this.x + this.width/2 + (Math.random() - 0.5) * 30,
+                            this.y + this.height/2 + (Math.random() - 0.5) * 30,
+                            {
+                                life: 15,
+                                velocityX: (Math.random() - 0.5) * 4,
+                                velocityY: (Math.random() - 0.5) * 4
+                            }
+                        );
+                    }
+
+                    // Damage number
+                    gameState.battle.addVisualEffect('damage_number',
+                        this.x + this.width/2,
+                        this.y + this.height/2 - 20,
                         {
-                            life: 15,
-                            velocityX: (Math.random() - 0.5) * 4,
-                            velocityY: (Math.random() - 0.5) * 4
+                            life: 60,
+                            damage: finalDamage
                         }
                     );
                 }
-
-                // Damage number
-                gameState.battle.addVisualEffect('damage_number',
-                    this.x + this.width/2,
-                    this.y + this.height/2 - 20,
-                    {
-                        life: 60,
-                        damage: finalDamage
-                    }
-                );
             }
 
             // 7. LOG DAMAGE CALCULATION
@@ -6345,50 +6347,54 @@
                     const particleCount = 30;
                     const ringRadius = 30 + (ring * 20);
 
-                    for (let i = 0; i < particleCount; i++) {
-                        const angle = (Math.PI * 2 * i) / particleCount;
-                        const startX = targetCenterX + Math.cos(angle) * ringRadius;
-                        const startY = targetCenterY + Math.sin(angle) * ringRadius;
+                    if (gameState.battle && gameState.battle.addVisualEffect) {
+                        for (let i = 0; i < particleCount; i++) {
+                            const angle = (Math.PI * 2 * i) / particleCount;
+                            const startX = targetCenterX + Math.cos(angle) * ringRadius;
+                            const startY = targetCenterY + Math.sin(angle) * ringRadius;
 
-                        // Explosion particles
-                        gameState.battle.addVisualEffect('explosion_particle',
-                            startX,
-                            startY,
-                            {
-                                life: 40 - (ring * 5),
-                                velocityX: Math.cos(angle) * (4 + ring),
-                                velocityY: Math.sin(angle) * (4 + ring),
-                                size: 8 - ring,
-                                color: ring % 2 === 0 ? '#FF4500' : '#FFA500'
-                            }
-                        );
-                    }
+                            // Explosion particles
+                            gameState.battle.addVisualEffect('explosion_particle',
+                                startX,
+                                startY,
+                                {
+                                    life: 40 - (ring * 5),
+                                    velocityX: Math.cos(angle) * (4 + ring),
+                                    velocityY: Math.sin(angle) * (4 + ring),
+                                    size: 8 - ring,
+                                    color: ring % 2 === 0 ? '#FF4500' : '#FFA500'
+                                }
+                            );
+                        }
 
-                    // Create fire particles
-                    for (let i = 0; i < 15; i++) {
-                        gameState.battle.addVisualEffect('fire_particle',
-                            targetCenterX + (Math.random() - 0.5) * 60,
-                            targetCenterY + (Math.random() - 0.5) * 60,
-                            {
-                                life: 30,
-                                velocityX: (Math.random() - 0.5) * 6,
-                                velocityY: (Math.random() - 0.5) * 6 - 2,
-                                size: 6 + Math.random() * 4
-                            }
-                        );
+                        // Create fire particles
+                        for (let i = 0; i < 15; i++) {
+                            gameState.battle.addVisualEffect('fire_particle',
+                                targetCenterX + (Math.random() - 0.5) * 60,
+                                targetCenterY + (Math.random() - 0.5) * 60,
+                                {
+                                    life: 30,
+                                    velocityX: (Math.random() - 0.5) * 6,
+                                    velocityY: (Math.random() - 0.5) * 6 - 2,
+                                    size: 6 + Math.random() * 4
+                                }
+                            );
+                        }
                     }
                 }, ring * 50); // Stagger the rings
             }
 
             // Create central flash
-            gameState.battle.addVisualEffect('explosion_flash',
-                targetCenterX,
-                targetCenterY,
-                {
-                    life: 20,
-                    maxSize: 150
-                }
-            );
+            if (gameState.battle && gameState.battle.addVisualEffect) {
+                gameState.battle.addVisualEffect('explosion_flash',
+                    targetCenterX,
+                    targetCenterY,
+                    {
+                        life: 20,
+                        maxSize: 150
+                    }
+                );
+            }
 
             console.log(`💥 MASSIVE EXPLOSION at ${target.char.name}!`);
         }
