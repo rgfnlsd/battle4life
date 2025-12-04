@@ -12354,6 +12354,13 @@
                 gameState.challengeStats.trophiesEarned += data.trophiesEarned;
 
                 // Character tracking
+                // Ensure charactersUsed and raritiesWon are Sets
+                if (!(gameState.challengeStats.charactersUsed instanceof Set)) {
+                    gameState.challengeStats.charactersUsed = new Set(gameState.challengeStats.charactersUsed || []);
+                }
+                if (!(gameState.challengeStats.raritiesWon instanceof Set)) {
+                    gameState.challengeStats.raritiesWon = new Set(gameState.challengeStats.raritiesWon || []);
+                }
                 gameState.challengeStats.charactersUsed.add(data.character);
                 gameState.challengeStats.raritiesWon.add(data.rarity);
 
@@ -12381,6 +12388,10 @@
                 }
 
                 // Map tracking
+                // Ensure mapsWon is a Set
+                if (!(gameState.challengeStats.mapsWon instanceof Set)) {
+                    gameState.challengeStats.mapsWon = new Set(gameState.challengeStats.mapsWon || []);
+                }
                 gameState.challengeStats.mapsWon.add(data.map);
                 if (data.map === 'volcano') gameState.challengeStats.volcanoWins++;
                 if (data.map === 'space') gameState.challengeStats.spaceWins++;
@@ -12419,6 +12430,10 @@
                 gameState.challengeStats.addonsCollected++;
                 break;
             case 'mode_played':
+                // Ensure modesPlayed is a Set
+                if (!(gameState.challengeStats.modesPlayed instanceof Set)) {
+                    gameState.challengeStats.modesPlayed = new Set(gameState.challengeStats.modesPlayed || []);
+                }
                 gameState.challengeStats.modesPlayed.add(data.mode);
                 break;
             case 'tournament_completed':
