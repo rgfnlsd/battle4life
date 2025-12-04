@@ -1,4 +1,4 @@
-
+    // Battle4Life Game Script - Version 2024-12-04-FIXED
     // Enhanced Game State with CHALLENGES and BADGES!
     // Game Mode Selection Screen
     const gameModes = {
