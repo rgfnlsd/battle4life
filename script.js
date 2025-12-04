@@ -8411,14 +8411,10 @@
             }
         });
 
-        // Remove completed challenges from active list and generate new ones
-        const numCompleted = completedChallenges.length;
+        // Remove completed challenges from active list
         gameState.challenges = gameState.challenges.filter(c => c && !c.claimed);
 
-        // Generate new challenges to replace completed ones
-        for (let i = 0; i < numCompleted; i++) {
-            generateNewChallenge();
-        }
+        // NOTE: New challenges are ONLY generated from trophy road rewards, not automatically
 
         // Save game state after processing completed challenges
         saveGameState();
@@ -12916,13 +12912,8 @@
     // Initialize on game start
     initializeChallengeTracking();
 
-    // Generate initial challenges if none exist
-    if (!gameState.challenges || gameState.challenges.length === 0) {
-        console.log('🎯 Generating initial challenges...');
-        for (let i = 0; i < 3; i++) {
-            generateNewChallenge();
-        }
-    }
+    // NOTE: Challenges are ONLY unlocked from trophy road rewards, not generated automatically
+    // Players must claim trophy road milestones to get new challenges
 
     // Initialize universal coin display (wrapped in try-catch to prevent errors)
     try {
