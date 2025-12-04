@@ -12884,6 +12884,7 @@
                     gameState.challengeStats.charactersUsed = new Set(gameState.challengeStats.charactersUsed || []);
                     gameState.challengeStats.raritiesWon = new Set(gameState.challengeStats.raritiesWon || []);
                     gameState.challengeStats.mapsWon = new Set(gameState.challengeStats.mapsWon || []);
+                    gameState.challengeStats.modesPlayed = new Set(gameState.challengeStats.modesPlayed || []);
                 }
 
                 console.log('💾 Game state loaded!', gameState);
