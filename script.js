@@ -6777,9 +6777,14 @@
         challengesGrid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;';
         
         gameState.challenges.forEach((challenge, index) => {
-            const progressPercent = (challenge.progress / challenge.target) * 100;
-            const isComplete = challenge.progress >= challenge.target;
-            
+            // Ensure all values are valid numbers to prevent NaN
+            const progress = Number(challenge.progress) || 0;
+            const target = Number(challenge.target) || 1;
+            const reward = Number(challenge.reward) || 0;
+
+            const progressPercent = Math.min(100, Math.max(0, (progress / target) * 100));
+            const isComplete = progress >= target;
+
             const challengeCard = document.createElement('div');
             challengeCard.style.cssText = `
                 background: linear-gradient(45deg, #9C27B0, #E91E63);
@@ -6792,25 +6797,25 @@
                 transition: all 0.3s;
                 ${isComplete ? 'box-shadow: 0 0 20px #4CAF50;' : ''}
             `;
-            
+
             challengeCard.innerHTML = `
-                <div style="font-size: 32px; margin-bottom: 10px;">${challenge.emoji}</div>
-                <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">${challenge.name}</div>
-                <div style="font-size: 14px; margin-bottom: 15px; color: #FFD700;">${challenge.description}</div>
-                
+                <div style="font-size: 32px; margin-bottom: 10px;">${challenge.emoji || '🎯'}</div>
+                <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;">${challenge.name || 'Challenge'}</div>
+                <div style="font-size: 14px; margin-bottom: 15px; color: #FFD700;">${challenge.description || 'Complete this challenge'}</div>
+
                 <!-- Progress Bar -->
                 <div style="width: 100%; height: 12px; background: rgba(0,0,0,0.3); border-radius: 6px; overflow: hidden; margin-bottom: 10px;">
-                    <div style="width: ${progressPercent}%; height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A); transition: width 0.3s;"></div>
+                    <div style="width: ${progressPercent.toFixed(1)}%; height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A); transition: width 0.3s;"></div>
                 </div>
-                
+
                 <div style="font-size: 16px; font-weight: bold; margin-bottom: 10px;">
-                    Progress: ${challenge.progress} / ${challenge.target}
+                    Progress: ${progress} / ${target}
                 </div>
-                
+
                 <div style="font-size: 14px; color: #4CAF50; font-weight: bold;">
-                    💰 Reward: ${challenge.reward} coins
+                    💰 Reward: ${reward} coins
                 </div>
-                
+
                 ${isComplete ? '<div style="background: #4CAF50; color: white; padding: 8px 15px; border-radius: 20px; font-size: 14px; font-weight: bold; margin-top: 10px;">✅ COMPLETE!</div>' : ''}
             `;
             
@@ -12250,9 +12255,13 @@
         if (availableChallenges.length === 0) return;
         
         const newChallenge = availableChallenges[Math.floor(Math.random() * availableChallenges.length)];
+
+        // Ensure all challenge properties are valid to prevent NaN
         gameState.challenges.push({
             ...newChallenge,
             progress: 0,
+            target: Number(newChallenge.target) || 1,
+            reward: Number(newChallenge.reward) || 0,
             dateAdded: Date.now()
         });
 
@@ -12589,8 +12598,11 @@
                     break;
             }
 
-            challenge.progress = Math.min(progress, challenge.target);
-            
+            // Ensure progress and target are valid numbers to prevent NaN
+            const validProgress = Number(progress) || 0;
+            const validTarget = Number(challenge.target) || 1;
+            challenge.progress = Math.min(validProgress, validTarget);
+
             // Complete challenge if target reached
             if (challenge.progress >= challenge.target && !gameState.completedChallenges.includes(challenge.id)) {
                 completeChallenge(challenge, index);
@@ -12787,7 +12799,10 @@
                     break;
             }
 
-            challenge.progress = Math.min(progress, challenge.target);
+            // Ensure progress and target are valid numbers to prevent NaN
+            const validProgress = Number(progress) || 0;
+            const validTarget = Number(challenge.target) || 1;
+            challenge.progress = Math.min(validProgress, validTarget);
 
             console.log(`📊 Challenge: ${challenge.name} (${challenge.type}) - Progress: ${challenge.progress}/${challenge.target}`);
 
