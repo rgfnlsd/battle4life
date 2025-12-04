@@ -9,30 +9,33 @@
         // Core modules (no dependencies)
         'js/config.js',
         'js/gameState.js',
-        
+
         // Data modules (no dependencies, can load in parallel)
         'js/data/characters.js',
         'js/data/badges.js',
         'js/data/maps.js',
         'js/data/items.js',
         'js/data/addons.js',
-        
+
         // Class modules (depend on core + data)
         'js/classes/Projectile.js',
         'js/classes/Fighter.js',
         'js/classes/Boss.js',
         'js/classes/Battle.js',
-        
+
         // System modules (depend on classes)
         'js/systems/shop.js',
         'js/systems/challenges.js',
         'js/systems/trophyRoad.js',
         'js/systems/tournament.js',
-        
-        // UI modules (depend on systems)
+
+        // Utility functions (used by UI)
+        'js/utils.js',
+
+        // UI modules (depend on systems and utils)
         'js/ui/displays.js',
         'js/ui/screens.js',
-        
+
         // Main entry point (depends on everything)
         'js/main.js'
     ];
