@@ -6,7 +6,9 @@ function showShop() {
     showScreen('shopScreen');
 
     // Track shop visit
-    trackChallengeProgress('shop_visited');
+    if (typeof trackChallengeProgress === 'function') {
+        trackChallengeProgress('shop_visited');
+    }
 }
 
 function showCollection() {
@@ -17,26 +19,34 @@ function showCollection() {
 
 function showMainMenu() {
     showScreen('mainMenu');
-    
+
     // Update main menu based on game mode
+    const topRightBtn = document.getElementById('topRightBtn');
+    const topCenterBtn = document.getElementById('topCenterBtn');
+    const topLeftBtn = document.getElementById('topLeftBtn');
+
     if (gameState.gameMode === 'multiplayer') {
         // Hide challenges and trophy road for multiplayer
-        document.getElementById('topRightBtn').style.display = 'none';
-        document.getElementById('topCenterBtn').onclick = () => showShop();
-        document.getElementById('topCenterBtn').innerHTML = `
-            <span class="emoji" style="font-size: 48px; margin-bottom: 10px;">🛒</span>
-            <span>Shop</span>
-        `;
-        document.getElementById('topLeftBtn').style.display = 'none';
+        if (topRightBtn) topRightBtn.style.display = 'none';
+        if (topCenterBtn) {
+            topCenterBtn.onclick = () => showShop();
+            topCenterBtn.innerHTML = `
+                <span class="emoji" style="font-size: 48px; margin-bottom: 10px;">🛒</span>
+                <span>Shop</span>
+            `;
+        }
+        if (topLeftBtn) topLeftBtn.style.display = 'none';
     } else {
         // Show all buttons for single player
-        document.getElementById('topRightBtn').style.display = 'flex';
-        document.getElementById('topCenterBtn').onclick = () => showTrophyRoad();
-        document.getElementById('topCenterBtn').innerHTML = `
-            <span class="emoji" style="font-size: 48px; margin-bottom: 10px;">🏆</span>
-            <span>Trophy Road</span>
-        `;
-        document.getElementById('topLeftBtn').style.display = 'flex';
+        if (topRightBtn) topRightBtn.style.display = 'flex';
+        if (topCenterBtn) {
+            topCenterBtn.onclick = () => showTrophyRoad();
+            topCenterBtn.innerHTML = `
+                <span class="emoji" style="font-size: 48px; margin-bottom: 10px;">🏆</span>
+                <span>Trophy Road</span>
+            `;
+        }
+        if (topLeftBtn) topLeftBtn.style.display = 'flex';
     }
 }
 
@@ -47,15 +57,23 @@ function showGameModeSelect() {
 function showBattleModeSelect() {
     // If in tournament mode, redirect to tournament screen
     if (gameState.tournamentMode && gameState.tournamentData.isActive) {
-        showNotification('🏆 Tournament in progress!\nYou must complete or forfeit your current tournament before starting new battles.');
-        showTournamentSelect();
+        if (typeof showNotification === 'function') {
+            showNotification('🏆 Tournament in progress!\nYou must complete or forfeit your current tournament before starting new battles.');
+        }
+        if (typeof showTournamentSelect === 'function') {
+            showTournamentSelect();
+        }
         return;
     }
 
     // If in 2-player tournament mode, redirect to 2-player tournament screen
     if (gameState.tournament2PlayerMode && gameState.tournament2PlayerData.isActive) {
-        showNotification('👥 2-Player Tournament in progress!\nYou must complete or forfeit your current tournament before starting new battles.');
-        showTournamentSelect2Player();
+        if (typeof showNotification === 'function') {
+            showNotification('👥 2-Player Tournament in progress!\nYou must complete or forfeit your current tournament before starting new battles.');
+        }
+        if (typeof showTournamentSelect2Player === 'function') {
+            showTournamentSelect2Player();
+        }
         return;
     }
 
@@ -73,10 +91,14 @@ function showCharacterSelect() {
             gameState.selectedCharacter = series.playerCharacter;
             gameState.selectedPlayer2Character = series.opponentCharacter;
 
-            showNotification(`🔒 Series Characters Locked!\n\nYou: ${characters[series.playerCharacter].name}\nOpponent: ${characters[series.opponentCharacter].name}\n\nGame ${series.gamesPlayed + 1} of series starting...`);
+            if (typeof showNotification === 'function' && typeof characters !== 'undefined') {
+                showNotification(`🔒 Series Characters Locked!\n\nYou: ${characters[series.playerCharacter].name}\nOpponent: ${characters[series.opponentCharacter].name}\n\nGame ${series.gamesPlayed + 1} of series starting...`);
+            }
 
             setTimeout(() => {
-                showMapSelect();
+                if (typeof showMapSelect === 'function') {
+                    showMapSelect();
+                }
             }, 3000);
             return;
         }
@@ -93,23 +115,35 @@ function showCharacterSelect() {
             gameState.selectedCharacter = series.playerCharacter;
             gameState.selectedPlayer2Character = series.opponentCharacter;
 
-            showNotification(`🔒 Player ${data.currentPlayer} Series Characters Locked!\n\nYou: ${characters[series.playerCharacter].name}\nOpponent: ${characters[series.opponentCharacter].name}\n\nGame ${series.gamesPlayed + 1} of series starting...`);
+            if (typeof showNotification === 'function' && typeof characters !== 'undefined') {
+                showNotification(`🔒 Player ${data.currentPlayer} Series Characters Locked!\n\nYou: ${characters[series.playerCharacter].name}\nOpponent: ${characters[series.opponentCharacter].name}\n\nGame ${series.gamesPlayed + 1} of series starting...`);
+            }
 
             setTimeout(() => {
-                showMapSelect();
+                if (typeof showMapSelect === 'function') {
+                    showMapSelect();
+                }
             }, 3000);
             return;
         }
     }
 
-    updateCharacterSelectPlayerInfo();
-    updateSelectableCharacters();
+    if (typeof updateCharacterSelectPlayerInfo === 'function') {
+        updateCharacterSelectPlayerInfo();
+    }
+    if (typeof updateSelectableCharacters === 'function') {
+        updateSelectableCharacters();
+    }
     showScreen('characterSelectScreen');
 }
 
 function showBadges() {
-    updateBadgesPlayerInfo();
-    updateBadgesDisplay();
+    if (typeof updateBadgesPlayerInfo === 'function') {
+        updateBadgesPlayerInfo();
+    }
+    if (typeof updateBadgesDisplay === 'function') {
+        updateBadgesDisplay();
+    }
     showScreen('badgesScreen');
 }
 
