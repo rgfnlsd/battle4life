@@ -75,7 +75,7 @@
     }
 
     let gameState = {
-        gameMode: null, // 'singleplayer' or 'multiplayer' - selected first
+        gameMode: 'singleplayer', // 'singleplayer' or 'multiplayer' - defaults to singleplayer
         selectedBattleMode: 'normal', // 'normal', 'special_drop', or 'flag_capture'
         currentShopPlayer: 1, // For multiplayer: which player is shopping (1 or 2)
 
@@ -12949,6 +12949,19 @@
 
     // Load game state on startup
     loadGameState();
+
+    // Initialize UI for the current game mode
+    if (gameState.gameMode === 'singleplayer') {
+        document.getElementById('singlePlayerCoins').style.display = 'block';
+        document.getElementById('player1Coins').style.display = 'none';
+        document.getElementById('player2Coins').style.display = 'none';
+        updateSinglePlayerCoinsDisplay();
+    } else if (gameState.gameMode === 'multiplayer') {
+        document.getElementById('singlePlayerCoins').style.display = 'none';
+        document.getElementById('player1Coins').style.display = 'block';
+        document.getElementById('player2Coins').style.display = 'block';
+        updateMultiplayerCoinsDisplay();
+    }
 
     // Helper function to reset coins (for testing/debugging)
     window.resetCoins = function() {
