@@ -11181,7 +11181,7 @@
                 chestOpening.appendChild(statReveal);
 
                 createParticles(particles, char.rarity);
-            } else {
+            } else if (item.type === 'badge') {
                 // Badge
                 const badge = badges[item.id];
 
