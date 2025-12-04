@@ -28,6 +28,7 @@
         'js/systems/challenges.js',
         'js/systems/trophyRoad.js',
         'js/systems/tournament.js',
+        'js/systems/battleControls.js',
 
         // Utility functions (used by UI)
         'js/utils.js',

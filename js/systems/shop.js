@@ -980,6 +980,18 @@ function endBadgeChestAnimation(badgeIds, chestType) {
     }
 }
 
+// Make functions globally available for onclick handlers
+window.buyChest = buyChest;
+window.buyBadgeChest = buyBadgeChest;
+window.buyAddonChest = buyAddonChest;
+window.showUnifiedChestAnimation = showUnifiedChestAnimation;
+window.showBadgeChestAnimation = showBadgeChestAnimation;
+window.showAddonChestAnimation = showAddonChestAnimation;
+window.showSequentialChestAnimation = showSequentialChestAnimation;
+window.endChestAnimation = endChestAnimation;
+window.endBadgeChestAnimation = endBadgeChestAnimation;
+window.endAddonChestAnimation = endAddonChestAnimation;
+
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { buyChest, buyBadgeChest, buyAddonChest, showUnifiedChestAnimation, showBadgeChestAnimation, showAddonChestAnimation, showSequentialChestAnimation, endChestAnimation, endBadgeChestAnimation, endAddonChestAnimation };

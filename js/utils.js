@@ -49,16 +49,19 @@ function hideUniversalCoins() {
 function updateUniversalCoinsDisplay() {
     const singlePlayerDisplay = document.getElementById('singlePlayerCoinDisplay');
     const multiplayerDisplay = document.getElementById('multiplayerCoinDisplay');
-    
+
     if (gameState.gameMode === 'singleplayer') {
         if (singlePlayerDisplay) singlePlayerDisplay.style.display = 'block';
         if (multiplayerDisplay) multiplayerDisplay.style.display = 'none';
-        document.getElementById('universalCoinCount').textContent = gameState.coins;
+        const coinCount = document.getElementById('universalCoinCount');
+        if (coinCount) coinCount.textContent = gameState.coins;
     } else {
         if (singlePlayerDisplay) singlePlayerDisplay.style.display = 'none';
         if (multiplayerDisplay) multiplayerDisplay.style.display = 'block';
-        document.getElementById('universalPlayer1CoinCount').textContent = gameState.player1Coins;
-        document.getElementById('universalPlayer2CoinCount').textContent = gameState.player2Coins;
+        const p1Count = document.getElementById('universalPlayer1CoinCount');
+        const p2Count = document.getElementById('universalPlayer2CoinCount');
+        if (p1Count) p1Count.textContent = gameState.player1Coins;
+        if (p2Count) p2Count.textContent = gameState.player2Coins;
     }
 }
 
@@ -66,16 +69,24 @@ function updateUniversalCoinsDisplay() {
 function selectGameMode(mode) {
     gameState.gameMode = mode;
 
+    const singlePlayerCoins = document.getElementById('singlePlayerCoins');
+    const player1Coins = document.getElementById('player1Coins');
+    const player2Coins = document.getElementById('player2Coins');
+
     if (mode === 'multiplayer') {
-        document.getElementById('singlePlayerCoins').style.display = 'none';
-        document.getElementById('player1Coins').style.display = 'block';
-        document.getElementById('player2Coins').style.display = 'block';
-        updateMultiplayerCoinsDisplay();
+        if (singlePlayerCoins) singlePlayerCoins.style.display = 'none';
+        if (player1Coins) player1Coins.style.display = 'block';
+        if (player2Coins) player2Coins.style.display = 'block';
+        if (typeof updateMultiplayerCoinsDisplay === 'function') {
+            updateMultiplayerCoinsDisplay();
+        }
     } else {
-        document.getElementById('singlePlayerCoins').style.display = 'block';
-        document.getElementById('player1Coins').style.display = 'none';
-        document.getElementById('player2Coins').style.display = 'none';
-        updateSinglePlayerCoinsDisplay();
+        if (singlePlayerCoins) singlePlayerCoins.style.display = 'block';
+        if (player1Coins) player1Coins.style.display = 'none';
+        if (player2Coins) player2Coins.style.display = 'none';
+        if (typeof updateSinglePlayerCoinsDisplay === 'function') {
+            updateSinglePlayerCoinsDisplay();
+        }
     }
 
     // Initialize universal coin display
@@ -137,6 +148,37 @@ function updateCharacterGrid() {
     });
 }
 
+// Reset Account function with confirmation
+function confirmResetAccount() {
+    const confirmation = confirm('⚠️ WARNING ⚠️\n\nThis will DELETE ALL your progress:\n• All coins\n• All unlocked characters\n• All badges\n• All trophies\n• All challenge progress\n• Everything!\n\nYou will start completely fresh with only 75 coins and 3 starter characters.\n\nAre you ABSOLUTELY SURE?');
+
+    if (confirmation) {
+        const doubleCheck = confirm('🔥 FINAL WARNING 🔥\n\nThis action CANNOT be undone!\n\nClick OK to permanently delete everything and restart.');
+
+        if (doubleCheck) {
+            localStorage.removeItem('battleArenaGameState');
+            if (typeof showNotification === 'function') {
+                showNotification('🔥 Account Reset! Starting fresh...');
+            }
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        }
+    }
+}
+
+// Make functions globally available for onclick handlers
+window.showScreen = showScreen;
+window.showUniversalCoins = showUniversalCoins;
+window.hideUniversalCoins = hideUniversalCoins;
+window.updateUniversalCoinsDisplay = updateUniversalCoinsDisplay;
+window.selectGameMode = selectGameMode;
+window.updateBattleModeDisplay = updateBattleModeDisplay;
+window.updateShopPlayerInfo = updateShopPlayerInfo;
+window.updateCollectionPlayerInfo = updateCollectionPlayerInfo;
+window.updateCharacterGrid = updateCharacterGrid;
+window.confirmResetAccount = confirmResetAccount;
+
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -148,7 +190,8 @@ if (typeof module !== 'undefined' && module.exports) {
         updateBattleModeDisplay,
         updateShopPlayerInfo,
         updateCollectionPlayerInfo,
-        updateCharacterGrid
+        updateCharacterGrid,
+        confirmResetAccount
     };
 }
 

@@ -113,6 +113,17 @@ function showBadges() {
     showScreen('badgesScreen');
 }
 
+// Make functions globally available for onclick handlers
+window.showShop = showShop;
+window.showCollection = showCollection;
+window.showMainMenu = showMainMenu;
+window.showGameModeSelect = showGameModeSelect;
+window.showBattleModeSelect = showBattleModeSelect;
+window.showCharacterSelect = showCharacterSelect;
+window.showBadges = showBadges;
+window.showTrophyRoad = showTrophyRoad;
+window.showChallenges = showChallenges;
+
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { showShop, showCollection, showMainMenu, showGameModeSelect, showBattleModeSelect, showCharacterSelect, showBadges };

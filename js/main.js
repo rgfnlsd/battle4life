@@ -9,23 +9,33 @@
     // Wait for all modules to be loaded
     window.addEventListener('modulesLoaded', function() {
         console.log('All modules loaded successfully!');
-        
+
         // Initialize game state from localStorage
-        loadGameState();
-        
-        // Update UI based on game mode
-        if (gameState.gameMode === 'singleplayer') {
-            updateSinglePlayerCoinsDisplay();
-        } else {
-            updateMultiplayerCoinsDisplay();
+        if (typeof loadGameState === 'function') {
+            loadGameState();
         }
-        
-        // Show initial screen
-        showGameModeSelect();
-        
+
+        // Show initial screen first (this sets up the DOM)
+        if (typeof showGameModeSelect === 'function') {
+            showGameModeSelect();
+        }
+
+        // Then update UI based on game mode (after DOM is ready)
+        setTimeout(function() {
+            if (gameState.gameMode === 'singleplayer') {
+                if (typeof updateSinglePlayerCoinsDisplay === 'function') {
+                    updateSinglePlayerCoinsDisplay();
+                }
+            } else {
+                if (typeof updateMultiplayerCoinsDisplay === 'function') {
+                    updateMultiplayerCoinsDisplay();
+                }
+            }
+        }, 100);
+
         // Set up keyboard controls
         setupKeyboardControls();
-        
+
         console.log('Battle4Life - Ready to play! 🎮');
     });
     

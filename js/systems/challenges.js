@@ -112,6 +112,13 @@ function initializeChallengeTracking() {
     }
 }
 
+// Make functions globally available for onclick handlers
+window.generateNewChallenge = generateNewChallenge;
+window.trackChallengeProgress = trackChallengeProgress;
+window.claimChallengeReward = claimChallengeReward;
+window.showChallenges = showChallenges;
+window.initializeChallengeTracking = initializeChallengeTracking;
+
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { generateNewChallenge, trackChallengeProgress, claimChallengeReward, showChallenges, initializeChallengeTracking };

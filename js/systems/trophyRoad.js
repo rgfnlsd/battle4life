@@ -173,6 +173,12 @@ function updateTrophyRoadDisplay() {
     container.appendChild(milestonesGrid);
 }
 
+// Make functions globally available for onclick handlers
+window.showTrophyRoad = showTrophyRoad;
+window.claimMilestone = claimMilestone;
+window.updateTrophyDisplay = updateTrophyDisplay;
+window.updateTrophyRoadDisplay = updateTrophyRoadDisplay;
+
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { showTrophyRoad, claimMilestone, updateTrophyDisplay, updateTrophyRoadDisplay };
