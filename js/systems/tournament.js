@@ -337,11 +337,9 @@ function forfeit2PlayerTournament() {
 
 // Make functions globally available for onclick handlers
 window.startTournament = startTournament;
-window.nextTournamentRound = nextTournamentRound;
 window.endTournament = endTournament;
 window.showTournamentBracket = showTournamentBracket;
 window.start2PlayerTournament = start2PlayerTournament;
-window.next2PlayerTournamentRound = next2PlayerTournamentRound;
 window.end2PlayerTournament = end2PlayerTournament;
 window.showTournamentSelect = showTournamentSelect;
 window.showTournamentSelect2Player = showTournamentSelect2Player;
@@ -350,5 +348,5 @@ window.forfeit2PlayerTournament = forfeit2PlayerTournament;
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { startTournament, nextTournamentRound, endTournament, showTournamentBracket, start2PlayerTournament, next2PlayerTournamentRound, end2PlayerTournament };
+    module.exports = { startTournament, endTournament, showTournamentBracket, start2PlayerTournament, end2PlayerTournament };
 }

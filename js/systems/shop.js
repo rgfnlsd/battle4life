@@ -987,12 +987,11 @@ window.buyAddonChest = buyAddonChest;
 window.showUnifiedChestAnimation = showUnifiedChestAnimation;
 window.showBadgeChestAnimation = showBadgeChestAnimation;
 window.showAddonChestAnimation = showAddonChestAnimation;
-window.showSequentialChestAnimation = showSequentialChestAnimation;
 window.endChestAnimation = endChestAnimation;
 window.endBadgeChestAnimation = endBadgeChestAnimation;
 window.endAddonChestAnimation = endAddonChestAnimation;
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { buyChest, buyBadgeChest, buyAddonChest, showUnifiedChestAnimation, showBadgeChestAnimation, showAddonChestAnimation, showSequentialChestAnimation, endChestAnimation, endBadgeChestAnimation, endAddonChestAnimation };
+    module.exports = { buyChest, buyBadgeChest, buyAddonChest, showUnifiedChestAnimation, showBadgeChestAnimation, showAddonChestAnimation, endChestAnimation, endBadgeChestAnimation, endAddonChestAnimation };
 }
