@@ -7000,6 +7000,12 @@
         currentEquippedBadges.push(badgeId);
         const badge = badges[badgeId];
         showNotification(`🏅 Badge Equipped!\n${badge.emoji} ${badge.name}\n${badge.description}`);
+
+        // Track if 3 badges are equipped
+        if (currentEquippedBadges.length === 3) {
+            trackChallengeProgress('badges_equipped');
+        }
+
         updateBadgesDisplay();
     }
 
@@ -7375,6 +7381,9 @@
     function showShop() {
         updateShopPlayerInfo();
         showScreen('shopScreen');
+
+        // Track shop visit
+        trackChallengeProgress('shop_visited');
     }
 
     function showCollection() {
@@ -7614,6 +7623,9 @@
             const addon = addons[addonKey];
             equippedAddons[type] = addonKey;
             showNotification(`Equipped ${addon.name} on ${characters[currentCharKey].name}!`);
+
+            // Track character customization
+            trackChallengeProgress('character_customized', { character: currentCharKey });
         }
 
         // Save game state
@@ -8257,6 +8269,11 @@
 
         // Track battle started for challenges
         trackChallengeProgress('battle_started');
+
+        // Track game mode played
+        if (gameState.selectedBattleMode) {
+            trackChallengeProgress('mode_played', { mode: gameState.selectedBattleMode });
+        }
 
         showScreen('battleScreen');
         console.log('Battle screen shown');
@@ -9357,7 +9374,7 @@
         }
 
         // Track challenge progress for chest opening
-        trackChallengeProgress('chest_opened');
+        trackChallengeProgress('chest_opened', { type: 'character' });
         trackChallengeProgress('coins_spent', { amount: price });
 
         // Special handling for CHOOSE chest
@@ -9398,6 +9415,9 @@
                     } else {
                         gameState.unlockedCharacters.push(newChar);
                     }
+
+                    // Track character collection
+                    trackChallengeProgress('character_collected');
                 } else {
                     // No characters available, give badge instead
                     const lockedBadges = Object.keys(badges).filter(badge => !playerBadges.includes(badge));
@@ -9464,6 +9484,9 @@
                         } else {
                             gameState.unlockedCharacters.push(newChar);
                         }
+
+                        // Track character collection
+                        trackChallengeProgress('character_collected');
                     }
                 }
             }
@@ -9594,6 +9617,11 @@
             if (!gameState.unlockedAddons) gameState.unlockedAddons = [];
             gameState.unlockedAddons.push(newAddon);
         }
+
+        // Track addon collection and chest opening
+        trackChallengeProgress('addon_collected');
+        trackChallengeProgress('chest_opened', { type: 'addon' });
+        trackChallengeProgress('coins_spent', { amount: price });
 
         // Show addon animation
         showAddonChestAnimation(newAddon, chestType);
@@ -11968,7 +11996,10 @@
             const originalBuyChest = buyChest;
             buyChest(milestone.reward.chestType);
         }
-        
+
+        // Track trophy road claim
+        trackChallengeProgress('trophy_road_claimed');
+
         // FIXED: Generate new challenge when claiming trophy road reward
         generateNewChallenge();
         
@@ -12086,7 +12117,52 @@
         // Special Achievement Challenges
         { id: 'battle_veteran', name: 'Battle Veteran', description: 'Play 50 total battles', target: 50, type: 'battles_played', reward: 300, emoji: '⚔️' },
         { id: 'battle_master', name: 'Battle Master', description: 'Play 100 total battles', target: 100, type: 'battles_played', reward: 600, emoji: '🎖️' },
-        { id: 'flawless_victory', name: 'Flawless Victory', description: 'Win with 100% HP remaining', target: 1, type: 'flawless_wins', reward: 400, emoji: '✨' }
+        { id: 'flawless_victory', name: 'Flawless Victory', description: 'Win with 100% HP remaining', target: 1, type: 'flawless_wins', reward: 400, emoji: '✨' },
+
+        // OUT-OF-GAME CHALLENGES - Character Collection
+        { id: 'character_starter', name: 'Character Starter', description: 'Unlock 5 characters', target: 5, type: 'characters_collected', reward: 100, emoji: '🎭' },
+        { id: 'character_enthusiast', name: 'Character Enthusiast', description: 'Unlock 10 characters', target: 10, type: 'characters_collected', reward: 200, emoji: '🌟' },
+        { id: 'character_collector_pro', name: 'Character Collector Pro', description: 'Unlock 25 characters', target: 25, type: 'characters_collected', reward: 400, emoji: '👑' },
+        { id: 'character_completionist', name: 'Character Completionist', description: 'Unlock 50 characters', target: 50, type: 'characters_collected', reward: 800, emoji: '💎' },
+        { id: 'gotta_catch_em_all', name: 'Gotta Catch Em All', description: 'Unlock all characters', target: 160, type: 'characters_collected', reward: 2000, emoji: '🏆' },
+
+        // OUT-OF-GAME CHALLENGES - Addon Collection
+        { id: 'addon_beginner', name: 'Addon Beginner', description: 'Unlock 5 addons', target: 5, type: 'addons_collected', reward: 75, emoji: '👕' },
+        { id: 'addon_collector', name: 'Addon Collector', description: 'Unlock 15 addons', target: 15, type: 'addons_collected', reward: 150, emoji: '🎨' },
+        { id: 'addon_master', name: 'Addon Master', description: 'Unlock 30 addons', target: 30, type: 'addons_collected', reward: 300, emoji: '✨' },
+        { id: 'fashionista', name: 'Fashionista', description: 'Unlock 50 addons', target: 50, type: 'addons_collected', reward: 600, emoji: '👗' },
+        { id: 'style_icon', name: 'Style Icon', description: 'Unlock all addons', target: 100, type: 'addons_collected', reward: 1500, emoji: '💎' },
+
+        // OUT-OF-GAME CHALLENGES - Trophy Milestones
+        { id: 'trophy_rookie', name: 'Trophy Rookie', description: 'Reach 50 trophies', target: 50, type: 'trophy_milestone', reward: 100, emoji: '🏆' },
+        { id: 'trophy_bronze', name: 'Trophy Bronze', description: 'Reach 100 trophies', target: 100, type: 'trophy_milestone', reward: 150, emoji: '🥉' },
+        { id: 'trophy_silver', name: 'Trophy Silver', description: 'Reach 250 trophies', target: 250, type: 'trophy_milestone', reward: 250, emoji: '🥈' },
+        { id: 'trophy_gold', name: 'Trophy Gold', description: 'Reach 500 trophies', target: 500, type: 'trophy_milestone', reward: 400, emoji: '🥇' },
+        { id: 'trophy_platinum', name: 'Trophy Platinum', description: 'Reach 1000 trophies', target: 1000, type: 'trophy_milestone', reward: 800, emoji: '💎' },
+        { id: 'trophy_legend', name: 'Trophy Legend', description: 'Reach 2500 trophies', target: 2500, type: 'trophy_milestone', reward: 1500, emoji: '👑' },
+
+        // OUT-OF-GAME CHALLENGES - Game Modes
+        { id: 'mode_explorer', name: 'Mode Explorer', description: 'Play 3 different game modes', target: 3, type: 'modes_played', reward: 150, emoji: '🎮' },
+        { id: 'mode_master', name: 'Mode Master', description: 'Play all game modes', target: 5, type: 'modes_played', reward: 300, emoji: '🌟' },
+        { id: 'tournament_player', name: 'Tournament Player', description: 'Complete 1 tournament', target: 1, type: 'tournaments_completed', reward: 200, emoji: '🏆' },
+        { id: 'tournament_champion', name: 'Tournament Champion', description: 'Win 3 tournaments', target: 3, type: 'tournaments_won', reward: 500, emoji: '👑' },
+
+        // OUT-OF-GAME CHALLENGES - Customization
+        { id: 'style_starter', name: 'Style Starter', description: 'Equip addons on 5 characters', target: 5, type: 'characters_customized', reward: 100, emoji: '🎨' },
+        { id: 'fashion_designer', name: 'Fashion Designer', description: 'Equip addons on 15 characters', target: 15, type: 'characters_customized', reward: 250, emoji: '✨' },
+        { id: 'badge_equipper', name: 'Badge Equipper', description: 'Equip 3 badges at once', target: 1, type: 'badges_equipped', reward: 150, emoji: '🏅' },
+        { id: 'power_builder', name: 'Power Builder', description: 'Equip 3 badges 10 times', target: 10, type: 'badges_equipped', reward: 300, emoji: '💪' },
+
+        // OUT-OF-GAME CHALLENGES - Shop Activity
+        { id: 'shop_visitor', name: 'Shop Visitor', description: 'Visit the shop 10 times', target: 10, type: 'shop_visits', reward: 50, emoji: '🛒' },
+        { id: 'addon_chest_opener', name: 'Addon Chest Opener', description: 'Open 10 addon chests', target: 10, type: 'addon_chests_opened', reward: 150, emoji: '📦' },
+        { id: 'badge_chest_opener', name: 'Badge Chest Opener', description: 'Open 10 badge chests', target: 10, type: 'badge_chests_opened', reward: 150, emoji: '🎁' },
+        { id: 'character_chest_opener', name: 'Character Chest Opener', description: 'Open 10 character chests', target: 10, type: 'character_chests_opened', reward: 200, emoji: '🎭' },
+
+        // OUT-OF-GAME CHALLENGES - Trophy Road
+        { id: 'road_traveler', name: 'Road Traveler', description: 'Claim 5 trophy road rewards', target: 5, type: 'trophy_road_claimed', reward: 150, emoji: '🛣️' },
+        { id: 'road_master', name: 'Road Master', description: 'Claim 15 trophy road rewards', target: 15, type: 'trophy_road_claimed', reward: 400, emoji: '🏁' },
+        { id: 'road_legend', name: 'Road Legend', description: 'Claim all trophy road rewards', target: 30, type: 'trophy_road_claimed', reward: 1000, emoji: '👑' }
     ];
 
     // Initialize challenge progress tracking
@@ -12139,7 +12215,21 @@
                 epicBadges: 0, // Epic badges collected
                 coinsEarned: 0, // Total coins earned
                 battlesPlayed: 0, // Total battles played
-                flawlessWins: 0 // Wins with 100% HP
+                flawlessWins: 0, // Wins with 100% HP
+
+                // OUT-OF-GAME STATS
+                charactersCollected: 0, // Total characters unlocked
+                addonsCollected: 0, // Total addons unlocked
+                modesPlayed: new Set(), // Different game modes played
+                tournamentsCompleted: 0, // Tournaments completed
+                tournamentsWon: 0, // Tournaments won
+                charactersCustomized: new Set(), // Characters with addons equipped
+                badgesEquippedCount: 0, // Times equipped 3 badges
+                shopVisits: 0, // Times visited shop
+                addonChestsOpened: 0, // Addon chests opened
+                badgeChestsOpened: 0, // Badge chests opened
+                characterChestsOpened: 0, // Character chests opened
+                trophyRoadClaimed: 0 // Trophy road rewards claimed
             };
         }
         
@@ -12278,6 +12368,37 @@
                 break;
             case 'chest_opened':
                 gameState.challengeStats.chestsOpened++;
+                // Track specific chest types
+                if (data.type === 'addon') gameState.challengeStats.addonChestsOpened++;
+                if (data.type === 'badge') gameState.challengeStats.badgeChestsOpened++;
+                if (data.type === 'character') gameState.challengeStats.characterChestsOpened++;
+                break;
+            case 'character_collected':
+                gameState.challengeStats.charactersCollected++;
+                break;
+            case 'addon_collected':
+                gameState.challengeStats.addonsCollected++;
+                break;
+            case 'mode_played':
+                gameState.challengeStats.modesPlayed.add(data.mode);
+                break;
+            case 'tournament_completed':
+                gameState.challengeStats.tournamentsCompleted++;
+                break;
+            case 'tournament_won':
+                gameState.challengeStats.tournamentsWon++;
+                break;
+            case 'character_customized':
+                gameState.challengeStats.charactersCustomized.add(data.character);
+                break;
+            case 'badges_equipped':
+                gameState.challengeStats.badgesEquippedCount++;
+                break;
+            case 'shop_visited':
+                gameState.challengeStats.shopVisits++;
+                break;
+            case 'trophy_road_claimed':
+                gameState.challengeStats.trophyRoadClaimed++;
                 break;
         }
         
@@ -12416,6 +12537,59 @@
                     break;
                 case 'flawless_wins':
                     progress = gameState.challengeStats.flawlessWins;
+                    break;
+
+                // OUT-OF-GAME CHALLENGE TYPES
+                case 'characters_collected':
+                    // Count actual characters owned
+                    const playerChars = gameState.gameMode === 'multiplayer'
+                        ? (gameState.currentShopPlayer === 1 ? gameState.player1Characters : gameState.player2Characters) || []
+                        : gameState.unlockedCharacters || [];
+                    progress = playerChars.length;
+                    break;
+                case 'addons_collected':
+                    // Count actual addons owned
+                    const playerAddons = gameState.gameMode === 'multiplayer'
+                        ? (gameState.currentShopPlayer === 1 ? gameState.player1Addons : gameState.player2Addons) || []
+                        : gameState.unlockedAddons || [];
+                    progress = playerAddons.length;
+                    break;
+                case 'trophy_milestone':
+                    // Check current trophy count
+                    const currentTrophies = gameState.gameMode === 'multiplayer'
+                        ? (gameState.currentShopPlayer === 1 ? gameState.player1Trophies : gameState.player2Trophies) || 0
+                        : gameState.trophies || 0;
+                    progress = currentTrophies >= challenge.target ? challenge.target : 0;
+                    break;
+                case 'modes_played':
+                    progress = gameState.challengeStats.modesPlayed.size;
+                    break;
+                case 'tournaments_completed':
+                    progress = gameState.challengeStats.tournamentsCompleted;
+                    break;
+                case 'tournaments_won':
+                    progress = gameState.challengeStats.tournamentsWon;
+                    break;
+                case 'characters_customized':
+                    progress = gameState.challengeStats.charactersCustomized.size;
+                    break;
+                case 'badges_equipped':
+                    progress = gameState.challengeStats.badgesEquippedCount;
+                    break;
+                case 'shop_visits':
+                    progress = gameState.challengeStats.shopVisits;
+                    break;
+                case 'addon_chests_opened':
+                    progress = gameState.challengeStats.addonChestsOpened;
+                    break;
+                case 'badge_chests_opened':
+                    progress = gameState.challengeStats.badgeChestsOpened;
+                    break;
+                case 'character_chests_opened':
+                    progress = gameState.challengeStats.characterChestsOpened;
+                    break;
+                case 'trophy_road_claimed':
+                    progress = gameState.challengeStats.trophyRoadClaimed;
                     break;
             }
 
@@ -12564,6 +12738,56 @@
                     break;
                 case 'flawless_wins':
                     progress = gameState.challengeStats.flawlessWins;
+                    break;
+
+                // OUT-OF-GAME CHALLENGE TYPES
+                case 'characters_collected':
+                    const playerCharsRecalc = gameState.gameMode === 'multiplayer'
+                        ? (gameState.currentShopPlayer === 1 ? gameState.player1Characters : gameState.player2Characters) || []
+                        : gameState.unlockedCharacters || [];
+                    progress = playerCharsRecalc.length;
+                    break;
+                case 'addons_collected':
+                    const playerAddonsRecalc = gameState.gameMode === 'multiplayer'
+                        ? (gameState.currentShopPlayer === 1 ? gameState.player1Addons : gameState.player2Addons) || []
+                        : gameState.unlockedAddons || [];
+                    progress = playerAddonsRecalc.length;
+                    break;
+                case 'trophy_milestone':
+                    const currentTrophiesRecalc = gameState.gameMode === 'multiplayer'
+                        ? (gameState.currentShopPlayer === 1 ? gameState.player1Trophies : gameState.player2Trophies) || 0
+                        : gameState.trophies || 0;
+                    progress = currentTrophiesRecalc >= challenge.target ? challenge.target : 0;
+                    break;
+                case 'modes_played':
+                    progress = gameState.challengeStats.modesPlayed.size;
+                    break;
+                case 'tournaments_completed':
+                    progress = gameState.challengeStats.tournamentsCompleted;
+                    break;
+                case 'tournaments_won':
+                    progress = gameState.challengeStats.tournamentsWon;
+                    break;
+                case 'characters_customized':
+                    progress = gameState.challengeStats.charactersCustomized.size;
+                    break;
+                case 'badges_equipped':
+                    progress = gameState.challengeStats.badgesEquippedCount;
+                    break;
+                case 'shop_visits':
+                    progress = gameState.challengeStats.shopVisits;
+                    break;
+                case 'addon_chests_opened':
+                    progress = gameState.challengeStats.addonChestsOpened;
+                    break;
+                case 'badge_chests_opened':
+                    progress = gameState.challengeStats.badgeChestsOpened;
+                    break;
+                case 'character_chests_opened':
+                    progress = gameState.challengeStats.characterChestsOpened;
+                    break;
+                case 'trophy_road_claimed':
+                    progress = gameState.challengeStats.trophyRoadClaimed;
                     break;
             }
 
