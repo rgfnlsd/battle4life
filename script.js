@@ -7152,6 +7152,20 @@
             }
         }
         
+        // Give coin reward (15-500 coins)
+        const coinReward = Math.floor(Math.random() * (500 - 15 + 1)) + 15;
+        if (gameState.gameMode === 'multiplayer') {
+            if (gameState.currentShopPlayer === 1) {
+                gameState.player1Coins += coinReward;
+            } else {
+                gameState.player2Coins += coinReward;
+            }
+            updateMultiplayerCoinsDisplay();
+        } else {
+            gameState.coins += coinReward;
+            updateSinglePlayerCoinsDisplay();
+        }
+
         // Track challenge progress
         trackChallengeProgress('chest_opened', { type: 'badge' });
         // Track all badges collected from this chest
@@ -7159,9 +7173,10 @@
             trackChallengeProgress('badge_collected', { rarity: badges[badgeId].rarity });
         });
         trackChallengeProgress('coins_spent', { amount: price });
-        
+        trackChallengeProgress('coins_earned', { amount: coinReward });
+
         // Show badge chest animation (create one for badges)
-        showBadgeChestAnimation(newBadges, chestType);
+        showBadgeChestAnimation(newBadges, chestType, coinReward);
     }
 
     function selectBadgeByChestRarity(availableBadges, rarityChances) {
@@ -7205,7 +7220,7 @@
         return selectedGroup[Math.floor(Math.random() * selectedGroup.length)];
     }
 
-    function showBadgeChestAnimation(badgeIds, chestType) {
+    function showBadgeChestAnimation(badgeIds, chestType, coinReward = 0) {
         const chestOpening = document.getElementById('chestOpening');
         const characterReveal = document.getElementById('characterReveal');
         const rarityGlow = document.getElementById('rarityGlow');
@@ -7312,7 +7327,7 @@
         
         setTimeout(() => {
             // End animation after 3 seconds total
-            endBadgeChestAnimation(badgeIds, chestType);
+            endBadgeChestAnimation(badgeIds, chestType, coinReward);
         }, 3000);
         
         function revealBadges() {
@@ -7374,7 +7389,7 @@
         }
     }
     
-    function endBadgeChestAnimation(badgeIds, chestType) {
+    function endBadgeChestAnimation(badgeIds, chestType, coinReward = 0) {
         const chestOpening = document.getElementById('chestOpening');
         chestOpening.style.display = 'none';
         
@@ -7390,10 +7405,17 @@
                 message += `🏅 ${badge.name} ${badge.emoji} (${badge.rarity.toUpperCase()})\n`;
             });
             message += `\nTotal: ${badgeIds.length} badges unlocked!`;
+            if (coinReward > 0) {
+                message += `\n\n💰 Bonus: +${coinReward} coins!`;
+            }
             showNotification(message);
         } else {
             const badge = badges[badgeIds[0]];
-            showNotification(`${playerName ? playerName + ' ' : ''}Badge Unlocked!\n🏅 ${badge.emoji} ${badge.name}\n${badge.rarity.toUpperCase()} • ${badge.description}`);
+            let message = `${playerName ? playerName + ' ' : ''}Badge Unlocked!\n🏅 ${badge.emoji} ${badge.name}\n${badge.rarity.toUpperCase()} • ${badge.description}`;
+            if (coinReward > 0) {
+                message += `\n\n💰 Bonus: +${coinReward} coins!`;
+            }
+            showNotification(message);
         }
     }
 
@@ -9521,8 +9543,23 @@
             }
         }
 
+        // Give coin reward (15-500 coins)
+        const coinReward = Math.floor(Math.random() * (500 - 15 + 1)) + 15;
+        if (gameState.gameMode === 'multiplayer') {
+            if (gameState.currentShopPlayer === 1) {
+                gameState.player1Coins += coinReward;
+            } else {
+                gameState.player2Coins += coinReward;
+            }
+            updateMultiplayerCoinsDisplay();
+        } else {
+            gameState.coins += coinReward;
+            updateSinglePlayerCoinsDisplay();
+        }
+        trackChallengeProgress('coins_earned', { amount: coinReward });
+
         // Show unified chest opening animation
-        showUnifiedChestAnimation(newItems, chestType);
+        showUnifiedChestAnimation(newItems, chestType, coinReward);
     }
 
     function selectItemByChestRarity(availableItems, rarityChances, itemType) {
@@ -11023,7 +11060,7 @@
     // Unified Chest Animation for Characters AND Badges - Sequential Stat Reveal!
     let currentUnifiedChestAnimation = null;
 
-    function showUnifiedChestAnimation(items, chestType) {
+    function showUnifiedChestAnimation(items, chestType, coinReward = 0) {
         const chestOpening = document.getElementById('chestOpening');
         const characterReveal = document.getElementById('characterReveal');
         const rarityGlow = document.getElementById('rarityGlow');
@@ -11229,7 +11266,7 @@
 
             // End animation after 1.5 seconds
             setTimeout(() => {
-                endUnifiedChestAnimation(items, chestType);
+                endUnifiedChestAnimation(items, chestType, coinReward);
             }, 1500);
         }
 
@@ -11247,7 +11284,7 @@
         });
     }
 
-    function endUnifiedChestAnimation(items, chestType) {
+    function endUnifiedChestAnimation(items, chestType, coinReward = 0) {
         const chestOpening = document.getElementById('chestOpening');
 
         // Cleanup
@@ -11273,15 +11310,26 @@
                     message += `${index + 1}. ${badge.name} ${badge.emoji} (${badge.rarity.toUpperCase()})\n`;
                 }
             });
+            if (coinReward > 0) {
+                message += `\n💰 Bonus: +${coinReward} coins!`;
+            }
             showNotification(message);
         } else {
             const item = items[0];
             if (item.type === 'character') {
                 const char = characters[item.id];
-                showNotification(`${playerName ? playerName + ' ' : ''}unlocked ${char.name}! ${char.emoji}\n${char.rarity.toUpperCase()} • HP: ${char.maxHealth} • Normal: ${char.damage} • Special: ${char.specialDamage}`);
+                let message = `${playerName ? playerName + ' ' : ''}unlocked ${char.name}! ${char.emoji}\n${char.rarity.toUpperCase()} • HP: ${char.maxHealth} • Normal: ${char.damage} • Special: ${char.specialDamage}`;
+                if (coinReward > 0) {
+                    message += `\n\n💰 Bonus: +${coinReward} coins!`;
+                }
+                showNotification(message);
             } else {
                 const badge = badges[item.id];
-                showNotification(`${playerName ? playerName + ' ' : ''}unlocked ${badge.name}! ${badge.emoji}\n${badge.rarity.toUpperCase()} • ${badge.description}`);
+                let message = `${playerName ? playerName + ' ' : ''}unlocked ${badge.name}! ${badge.emoji}\n${badge.rarity.toUpperCase()} • ${badge.description}`;
+                if (coinReward > 0) {
+                    message += `\n\n💰 Bonus: +${coinReward} coins!`;
+                }
+                showNotification(message);
             }
         }
     }
