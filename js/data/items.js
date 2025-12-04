@@ -1,0 +1,60 @@
+// Battle4Life - Special Drop Items
+// Auto-extracted from script.js
+
+const specialDropItems = {
+    sword: { name: 'Sword', emoji: '⚔️', damage: 50, type: 'weapon', duration: 10000 },
+    nuke: { name: 'Nuke', emoji: '💣', damage: 100, type: 'explosive', radius: 100, duration: 10000 },
+    knife: { name: 'Knife', emoji: '🔪', damage: 30, type: 'weapon', duration: 10000 },
+    shield: { name: 'Shield', emoji: '🛡️', defense: 20, type: 'defense', duration: 10000 },
+    heal: { name: 'Health Potion', emoji: '🧪', heal: 75, type: 'consumable', duration: 0 },
+    speed: { name: 'Speed Boost', emoji: '💨', speedMultiplier: 2, type: 'buff', duration: 10000 },
+    lightning: { name: 'Lightning', emoji: '⚡', damage: 80, type: 'instant', duration: 0 },
+    freeze: { name: 'Freeze Ray', emoji: '❄️', freezeDuration: 3000, type: 'debuff', duration: 10000 },
+    fire: { name: 'Fire Bomb', emoji: '🔥', damage: 60, type: 'area', radius: 80, duration: 10000 },
+    poison: { name: 'Poison Gas', emoji: '☠️', poisonDamage: 10, poisonDuration: 5000, type: 'debuff', duration: 10000 },
+    rocket: { name: 'Rocket', emoji: '🚀', damage: 90, type: 'projectile', duration: 10000 },
+    laser: { name: 'Laser Gun', emoji: '🔫', damage: 40, type: 'weapon', duration: 10000 },
+    bomb: { name: 'Bomb', emoji: '💥', damage: 70, type: 'explosive', radius: 60, duration: 10000 },
+    hammer: { name: 'War Hammer', emoji: '🔨', damage: 55, type: 'weapon', duration: 10000 },
+    bow: { name: 'Bow', emoji: '🏹', damage: 45, type: 'ranged', duration: 10000 },
+    magic: { name: 'Magic Wand', emoji: '🪄', damage: 65, type: 'magic', duration: 10000 },
+    spear: { name: 'Spear', emoji: '🔱', damage: 48, type: 'weapon', duration: 10000 },
+    axe: { name: 'Battle Axe', emoji: '🪓', damage: 58, type: 'weapon', duration: 10000 },
+    mace: { name: 'Mace', emoji: '⚒️', damage: 52, type: 'weapon', duration: 10000 },
+    whip: { name: 'Whip', emoji: '🪢', damage: 35, type: 'weapon', duration: 10000 },
+    chain: { name: 'Chain', emoji: '⛓️', damage: 40, type: 'weapon', duration: 10000 },
+    boomerang: { name: 'Boomerang', emoji: '🪃', damage: 42, type: 'ranged', duration: 10000 },
+    dynamite: { name: 'Dynamite', emoji: '🧨', damage: 85, type: 'explosive', radius: 90, duration: 10000 },
+    trident: { name: 'Trident', emoji: '🔱', damage: 53, type: 'weapon', duration: 10000 },
+    crystal: { name: 'Power Crystal', emoji: '💎', powerBoost: 1.5, type: 'buff', duration: 10000 },
+    anchor: { name: 'Anchor', emoji: '⚓', damage: 60, type: 'heavy', duration: 10000 },
+    cannon: { name: 'Cannon', emoji: '💣', damage: 95, type: 'heavy', duration: 10000 },
+    meteor: { name: 'Meteor', emoji: '☄️', damage: 120, type: 'ultimate', radius: 120, duration: 10000 },
+    tornado: { name: 'Tornado', emoji: '🌪️', damage: 75, type: 'area', radius: 100, duration: 10000 },
+    earthquake: { name: 'Earthquake', emoji: '🌍', damage: 80, type: 'global', duration: 10000 },
+    tsunami: { name: 'Tsunami', emoji: '🌊', damage: 90, type: 'wave', duration: 10000 },
+    volcano: { name: 'Volcano', emoji: '🌋', damage: 100, type: 'area', radius: 110, duration: 10000 },
+    blackhole: { name: 'Black Hole', emoji: '🕳️', damage: 150, type: 'ultimate', radius: 150, duration: 10000 },
+    diamond: { name: 'Diamond Sword', emoji: '💠', damage: 75, type: 'legendary', duration: 10000 },
+    star: { name: 'Shooting Star', emoji: '⭐', damage: 85, type: 'celestial', duration: 10000 },
+    moon: { name: 'Moon Beam', emoji: '🌙', damage: 70, type: 'celestial', duration: 10000 },
+    sun: { name: 'Solar Flare', emoji: '☀️', damage: 110, type: 'celestial', duration: 10000 },
+    comet: { name: 'Comet Strike', emoji: '☄️', damage: 95, type: 'celestial', duration: 10000 },
+    galaxy: { name: 'Galaxy Crusher', emoji: '🌌', damage: 200, type: 'cosmic', radius: 200, duration: 10000 },
+    time: { name: 'Time Stop', emoji: '⏰', freezeAll: 5000, type: 'time', duration: 0 },
+    space: { name: 'Space Rift', emoji: '🌀', teleport: true, type: 'dimensional', duration: 10000 },
+    void: { name: 'Void', emoji: '⬛', damage: 250, type: 'ultimate', duration: 10000 },
+    chaos: { name: 'Chaos Orb', emoji: '🔮', randomEffect: true, type: 'chaos', duration: 10000 },
+    destiny: { name: 'Destiny', emoji: '✨', guaranteedWin: 0.1, type: 'fate', duration: 10000 },
+    infinity: { name: 'Infinity Stone', emoji: '♾️', allPowers: true, type: 'infinite', duration: 15000 },
+    omega: { name: 'Omega Weapon', emoji: '🌟', damage: 300, type: 'omega', radius: 250, duration: 10000 },
+    alpha: { name: 'Alpha Strike', emoji: '🔺', damage: 180, type: 'alpha', duration: 10000 },
+    beta: { name: 'Beta Blast', emoji: '🔹', damage: 140, type: 'beta', duration: 10000 },
+    gamma: { name: 'Gamma Ray', emoji: '☢️', damage: 160, poisonDamage: 20, type: 'radiation', duration: 10000 },
+    delta: { name: 'Delta Force', emoji: '🔻', damage: 120, type: 'military', duration: 10000 }
+};
+
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { specialDropItems };
+}
