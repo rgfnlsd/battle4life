@@ -12903,6 +12903,18 @@
         }
     }
 
+    // Helper function to safely convert to Set
+    function toSet(value) {
+        if (!value) return new Set();
+        if (value instanceof Set) return value;
+        if (Array.isArray(value)) return new Set(value);
+        // If it's an object, try to get its values
+        if (typeof value === 'object') {
+            return new Set(Object.values(value));
+        }
+        return new Set();
+    }
+
     // Load gameState from localStorage
     function loadGameState() {
         try {
@@ -12913,12 +12925,12 @@
                 // Merge loaded state with default gameState
                 Object.assign(gameState, loadedState);
 
-                // Convert Arrays back to Sets
+                // Convert Arrays/Objects back to Sets safely
                 if (gameState.challengeStats) {
-                    gameState.challengeStats.charactersUsed = new Set(gameState.challengeStats.charactersUsed || []);
-                    gameState.challengeStats.raritiesWon = new Set(gameState.challengeStats.raritiesWon || []);
-                    gameState.challengeStats.mapsWon = new Set(gameState.challengeStats.mapsWon || []);
-                    gameState.challengeStats.modesPlayed = new Set(gameState.challengeStats.modesPlayed || []);
+                    gameState.challengeStats.charactersUsed = toSet(gameState.challengeStats.charactersUsed);
+                    gameState.challengeStats.raritiesWon = toSet(gameState.challengeStats.raritiesWon);
+                    gameState.challengeStats.mapsWon = toSet(gameState.challengeStats.mapsWon);
+                    gameState.challengeStats.modesPlayed = toSet(gameState.challengeStats.modesPlayed);
                 }
 
                 console.log('💾 Game state loaded!', gameState);
