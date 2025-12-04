@@ -4709,7 +4709,14 @@
 
             if (this.specialCooldown > 0) {
                 this.specialCooldown--;
+                // Log every 60 frames (once per second)
+                if (this.specialCooldown % 60 === 0) {
+                    console.log(`⏱️ ${this.char.name} special cooldown: ${this.specialCooldown} / ${this.specialMaxCooldown} (${(this.specialCooldown/60).toFixed(1)}s remaining)`);
+                }
             } else {
+                if (!this.canSpecialAttack) {
+                    console.log(`✅ ${this.char.name} special attack ready!`);
+                }
                 this.canSpecialAttack = true;
             }
 
@@ -5597,8 +5604,20 @@
         }
 
         specialAttack() {
-            if (!this.canSpecialAttack) return;
-            if (this.headFlying) return; // Prevent multiple head projectiles
+            console.log(`🎯 specialAttack called for ${this.char.name}`);
+            console.log(`   canSpecialAttack: ${this.canSpecialAttack}`);
+            console.log(`   specialCooldown: ${this.specialCooldown}`);
+            console.log(`   specialMaxCooldown: ${this.specialMaxCooldown}`);
+            console.log(`   headFlying: ${this.headFlying}`);
+
+            if (!this.canSpecialAttack) {
+                console.log(`   ❌ Cannot special attack - on cooldown`);
+                return;
+            }
+            if (this.headFlying) {
+                console.log(`   ❌ Cannot special attack - head is flying`);
+                return; // Prevent multiple head projectiles
+            }
 
             // Don't attack if dead
             if (this.health <= 0) return;
