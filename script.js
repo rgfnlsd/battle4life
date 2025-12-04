@@ -8194,7 +8194,16 @@
     }
 
     function startBattle() {
-        if (!gameState.selectedCharacter || !gameState.selectedMap || !gameState.selectedPlayer2Character) return;
+        console.log('🎮 startBattle called');
+        console.log('selectedCharacter:', gameState.selectedCharacter);
+        console.log('selectedMap:', gameState.selectedMap);
+        console.log('selectedPlayer2Character:', gameState.selectedPlayer2Character);
+
+        if (!gameState.selectedCharacter || !gameState.selectedMap || !gameState.selectedPlayer2Character) {
+            console.error('❌ Missing required data for battle!');
+            showNotification('Error: Missing character or map selection!');
+            return;
+        }
 
         // Use the enemy character that was already selected in the preparation screen
         const enemyChar = gameState.selectedPlayer2Character;
