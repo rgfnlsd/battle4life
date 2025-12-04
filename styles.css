@@ -19,7 +19,7 @@ p { line-height: 1.6; margin-bottom: 12px; }
 
 body {
     font-family: 'Segoe UI', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', Arial, sans-serif;
-    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+    background: linear-gradient(135deg, #2a4365 0%, #3b5998 50%, #6b46c1 100%);
     color: white;
     overflow: hidden;
 }
@@ -51,18 +51,17 @@ body {
 }
 
 .game-mode-select {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    background: linear-gradient(135deg, rgba(42, 67, 101, 0.6) 0%, rgba(59, 89, 152, 0.6) 50%, rgba(107, 70, 193, 0.6) 100%);
     text-align: center;
 }
 
 .main-menu {
-    background: radial-gradient(circle at 20% 20%, #2D1B69 0%, #1A0033 40%, #0D0015 80%),
-                radial-gradient(circle at 80% 80%, #2D1B69 0%, #1A0033 40%, #0D0015 80%);
+    background: linear-gradient(135deg, rgba(42, 67, 101, 0.5) 0%, rgba(59, 89, 152, 0.5) 50%, rgba(107, 70, 193, 0.5) 100%);
     text-align: center;
 }
 
 .shop-screen {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+    background: linear-gradient(135deg, rgba(42, 67, 101, 0.6) 0%, rgba(59, 89, 152, 0.6) 50%, rgba(107, 70, 193, 0.6) 100%);
 }
 
 .battle-screen {

@@ -11855,7 +11855,7 @@
     function updateTrophyRoadDisplay() {
         const container = document.getElementById('trophyRoadContainer');
         container.innerHTML = '';
-        
+
         let currentTrophies, claimedMilestones, currentCharacters;
         if (gameState.gameMode === 'multiplayer') {
             if (gameState.currentShopPlayer === 1) {
@@ -11868,6 +11868,12 @@
         } else {
             currentTrophies = gameState.trophies;
             currentCharacters = gameState.unlockedCharacters;
+        }
+
+        // Update trophy count in header
+        const trophyCountElement = document.getElementById('trophyRoadCountNumber');
+        if (trophyCountElement) {
+            trophyCountElement.textContent = currentTrophies;
         }
         
         // Create progress bar first
